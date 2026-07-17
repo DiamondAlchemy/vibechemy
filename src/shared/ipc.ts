@@ -39,7 +39,8 @@ export const IPC = {
   paneHistory: 'session:history',
   appVersion: 'app:version', // package.json version via app.getVersion() → the titlebar "vX.Y"
   settingsGet: 'settings:get',
-  settingsSet: 'settings:set'
+  settingsSet: 'settings:set',
+  usageReport: 'usage:report' // per-agent remaining plan usage (quota left) → UsageReport
 } as const
 
 export interface SessionDataMsg {

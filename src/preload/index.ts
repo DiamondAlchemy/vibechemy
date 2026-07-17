@@ -4,7 +4,7 @@ import { IPC } from '@shared/ipc'
 import type { DiffResult, MergeResult, SessionDataMsg, SessionExitEvent } from '@shared/ipc'
 import type { McEvent } from '@shared/events'
 import type { AgentStatus } from '@shared/agents/catalog'
-import type { ActivityEvent, Preset, Project, SessionRecord, WorktreeEntry } from '@shared/types'
+import type { ActivityEvent, Preset, Project, SessionRecord, UsageReport, WorktreeEntry } from '@shared/types'
 
 type HandoffResult = { ok: boolean; sessionId: string | null; summoned: boolean; message?: string }
 
@@ -75,7 +75,8 @@ const api = {
   paneHistory: (id: string): Promise<string> => ipcRenderer.invoke(IPC.paneHistory, id),
   getAppVersion: (): Promise<string> => ipcRenderer.invoke(IPC.appVersion),
   getSetting: (key: string): Promise<string | null> => ipcRenderer.invoke(IPC.settingsGet, key),
-  setSetting: (key: string, value: string): Promise<void> => ipcRenderer.invoke(IPC.settingsSet, { key, value })
+  setSetting: (key: string, value: string): Promise<void> => ipcRenderer.invoke(IPC.settingsSet, { key, value }),
+  getUsageReport: (): Promise<UsageReport> => ipcRenderer.invoke(IPC.usageReport)
 }
 
 if (process.contextIsolated) {

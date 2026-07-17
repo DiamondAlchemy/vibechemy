@@ -42,6 +42,7 @@ import { configureServer, hasTmux, setTmuxSocket } from './sessions/tmux'
 import { SettingsStore } from './settings/SettingsStore'
 import { StandardsStore } from './standards/StandardsStore'
 import { seedStandards } from './standards/seed'
+import { UsageService } from './usage/UsageService'
 
 app.commandLine.appendSwitch('disable-renderer-backgrounding')
 app.commandLine.appendSwitch('disable-background-timer-throttling')
@@ -165,6 +166,9 @@ app.whenReady().then(async () => {
   const standards = new StandardsStore(db)
   seedStandards(standards)
   const settings = new SettingsStore(db)
+  // USAGE: per-agent remaining plan quota ("what's left on each plan"). Remaining-only — the
+  // Keychain-reading adapters (Claude, Antigravity) stay behind their explicit opt-in settings.
+  const usage = new UsageService((key) => settings.get(key))
   const eventHub = new ControlEventHub()
 
   const mcpPort = identity.mcpPort
@@ -289,6 +293,7 @@ app.whenReady().then(async () => {
     worktrees,
     activity,
     settings,
+    usage,
     control: controlPlane,
     notifyExit,
     notifyProjects: () => bus.emit('projects'),

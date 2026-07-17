@@ -27,6 +27,7 @@ import type { PtyBridge } from '../sessions/PtyBridge'
 import type { SessionManager } from '../sessions/SessionManager'
 import { capturePane, hasSession, sendKeys, sendKeysNoEnter, cancelCopyMode } from '../sessions/tmux'
 import type { SettingsStore } from '../settings/SettingsStore'
+import type { UsageService } from '../usage/UsageService'
 
 function expandHome(path: string): string {
   const trimmed = path.trim()
@@ -47,6 +48,7 @@ export interface IpcDeps {
   worktrees: WorktreeService
   activity: ActivityLog
   settings: SettingsStore
+  usage: UsageService
   control: ControlPlane
   notifyExit: (id: string) => void
   notifyProjects: () => void
@@ -65,6 +67,7 @@ export function registerIpc({
   worktrees,
   activity,
   settings,
+  usage,
   control,
   notifyExit,
   notifyProjects,
@@ -235,9 +238,13 @@ export function registerIpc({
     // the package version in app metadata.
     return !app.isPackaged && version === process.versions.electron ? packageJson.version : version
   })
+  ipcMain.handle(IPC.usageReport, () => usage.report())
   ipcMain.handle(IPC.settingsGet, (_event, key: string) => settings.get(key))
   const writeSetting = (key: string, value: string): void => {
     settings.set(key, value)
+    // A usage-setting change (e.g. enabling the Claude Keychain card) must show up on the NEXT
+    // poll, not after the 60s cache expires — bust it so the enable click reflects immediately.
+    if (key.startsWith('usage.')) usage.invalidate()
     if (key === OPENCODE_MODELS_KEY) {
       presets.replaceFamily('opencode-', presetsFromModels(parseOpencodeModels(value)))
       notifyPresets()
