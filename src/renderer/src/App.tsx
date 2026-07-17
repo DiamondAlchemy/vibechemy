@@ -13,6 +13,7 @@ import { Settings } from './components/Settings'
 import { layoutsFor } from './layouts'
 import { usePaneView, readLS } from './usePaneView'
 import { useCockpitBackground, bgFileUrl } from './useCanvasDecor'
+import { useBackgroundMotion } from './useBackgroundMotion'
 import { useNow } from './hooks/useNow'
 import type { Preset, SessionRecord } from '@shared/types'
 import { LEGACY_PERSONAL_AGENT_IDS, PERSONAL_AGENT_PRESET_ID } from '@shared/agents/personalAgent'
@@ -28,6 +29,7 @@ function App(): React.JSX.Element {
   const [sessions, setSessions] = useState<SessionRecord[]>([])
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null)
   const cockpitBg = useCockpitBackground(currentProjectId)
+  const { backgroundMotion, setBackgroundMotion } = useBackgroundMotion()
   const [projectName, setProjectName] = useState('Scratch')
   const [presets, setPresets] = useState<Preset[]>([])
   // Workers explicitly promoted into the dock. Persisted so a restart/deploy no longer silently
@@ -330,6 +332,7 @@ function App(): React.JSX.Element {
       <div
         className="app-cockpit-background"
         data-bg={cockpitBg.bg}
+        data-motion={backgroundMotion}
         aria-hidden
         style={
           cockpitBg.bg === 'image' && cockpitBg.bgImage
@@ -445,7 +448,14 @@ function App(): React.JSX.Element {
         />
       )}
 
-      {settingsOpen && <Settings onClose={() => setSettingsOpen(false)} projectId={currentProjectId} />}
+      {settingsOpen && (
+        <Settings
+          onClose={() => setSettingsOpen(false)}
+          backgroundMotion={backgroundMotion}
+          setBackgroundMotion={setBackgroundMotion}
+          projectId={currentProjectId}
+        />
+      )}
 
       <div className="body">
         <Sidebar

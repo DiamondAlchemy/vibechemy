@@ -1,9 +1,20 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { PA_INPUT_LIMITS, PA_KEYS } from '@shared/agents/personalAgent'
+import { BACKGROUND_MOTIONS, type BackgroundMotion } from '@shared/appearance/backgroundMotion'
 import { api } from '../api'
 import { AgentsSection } from './AgentsSection'
 
-export function Settings({ onClose, projectId }: { onClose: () => void; projectId?: string | null }): React.JSX.Element {
+export function Settings({
+  onClose,
+  backgroundMotion,
+  setBackgroundMotion,
+  projectId
+}: {
+  onClose: () => void
+  backgroundMotion: BackgroundMotion
+  setBackgroundMotion: (motion: BackgroundMotion) => void
+  projectId?: string | null
+}): React.JSX.Element {
   const [personalAgent, setPersonalAgent] = useState({ label: '', command: '', args: '' })
   const [loaded, setLoaded] = useState(false)
 
@@ -89,6 +100,27 @@ export function Settings({ onClose, projectId }: { onClose: () => void; projectI
               </div>
             </>
           )}
+        </section>
+
+        <section className="settings-section">
+          <div className="settings-label">Canvas background</div>
+          <div className="settings-desc">Choose how quickly live canvas backgrounds move. Changes apply instantly.</div>
+          <div className="settings-row">
+            <span className="settings-field-label">Motion</span>
+            <div className="settings-seg" aria-label="Background motion">
+              {BACKGROUND_MOTIONS.map((motion) => (
+                <button
+                  key={motion}
+                  className={'settings-seg-btn' + (backgroundMotion === motion ? ' on' : '')}
+                  aria-pressed={backgroundMotion === motion}
+                  data-bg-motion-value={motion}
+                  onClick={() => setBackgroundMotion(motion)}
+                >
+                  {motion.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
         </section>
       </div>
     </div>

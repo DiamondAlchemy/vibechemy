@@ -112,15 +112,15 @@ input { outline: none; font-family: var(--sans); }
   33% { background-position: 46% 64%, 54% 36%; }
   66% { background-position: 62% 38%, 38% 62%; }
 }
-/* Aurora, refined: was a 22s ping-pong that reversed direction twice per cycle; now a slow
-   orbital path (4 waypoints, constant speed) so the color travel never visibly turns back. */
-.app-cockpit-background[data-bg="aurora"] { background-image: linear-gradient(120deg, rgba(127,227,255,0.20), rgba(181,127,255,0.18) 38%, rgba(93,255,176,0.14) 68%, rgba(127,227,255,0.20)); background-size: 320% 320%; animation: app-aurora 40s linear infinite; }
+/* Aurora — a brisk orbital sweep with a visible brightness tide. The dark ground stays fixed;
+   only the oversized color field moves and breathes. */
+.app-cockpit-background[data-bg="aurora"] { background-image: linear-gradient(120deg, rgba(127,227,255,0.24), rgba(181,127,255,0.22) 38%, rgba(93,255,176,0.17) 68%, rgba(127,227,255,0.24)); background-size: 320% 320%; animation: app-aurora 18s linear infinite; }
 @keyframes app-aurora {
-  0% { background-position: 0% 50%; }
-  25% { background-position: 50% 0%; }
-  50% { background-position: 100% 50%; }
-  75% { background-position: 50% 100%; }
-  100% { background-position: 0% 50%; }
+  0% { background-position: 0% 50%; opacity: 0.68; }
+  25% { background-position: 50% 0%; opacity: 1; }
+  50% { background-position: 100% 50%; opacity: 0.74; }
+  75% { background-position: 50% 100%; opacity: 1; }
+  100% { background-position: 0% 50%; opacity: 0.68; }
 }
 .app-cockpit-background[data-bg="starfield"] {
   background-image:
@@ -213,63 +213,113 @@ input { outline: none; font-family: var(--sans); }
   9%, 100% { opacity: 0; transform: rotate(-24deg) translate3d(-640px, 0, 0); }
 }
 @keyframes app-bg-shimmer { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
-/* Nebula — the holo/nebula lobes de-tuned to a slow fog: three oversized color lobes
-   wandering long, independent waypoint paths. The most alive ground, still whisper-contrast. */
+/* Nebula — three localized fog lobes cross wide, independent paths quickly enough that their
+   overlap visibly reshapes within a glance. */
 .app-cockpit-background[data-bg="nebula"] {
   background-image:
-    radial-gradient(45% 55% at 22% 24%, rgba(127,227,255,0.13), transparent 70%),
-    radial-gradient(50% 58% at 80% 18%, rgba(181,127,255,0.12), transparent 70%),
-    radial-gradient(58% 50% at 55% 88%, rgba(93,255,176,0.09), transparent 70%);
+    radial-gradient(45% 55% at 22% 24%, rgba(127,227,255,0.18), transparent 70%),
+    radial-gradient(50% 58% at 80% 18%, rgba(181,127,255,0.17), transparent 70%),
+    radial-gradient(58% 50% at 55% 88%, rgba(93,255,176,0.13), transparent 70%);
   background-size: 165% 165%, 175% 175%, 155% 155%;
-  animation: app-nebula 88s ease-in-out infinite;
+  animation: app-nebula 22s ease-in-out infinite;
 }
 @keyframes app-nebula {
-  0%, 100% { background-position: 8% 18%, 92% 8%, 50% 96%; }
-  33% { background-position: 38% 52%, 58% 42%, 22% 58%; }
-  66% { background-position: 14% 78%, 84% 62%, 74% 68%; }
+  0%, 100% { background-position: -18% 2%, 112% -12%, 48% 112%; }
+  33% { background-position: 54% 68%, 42% 52%, -12% 38%; }
+  66% { background-position: -8% 104%, 106% 78%, 112% 62%; }
 }
-/* Fireflies — near-field motes, not a sky: sparse warm amber (with a cool minority) rising
-   slower than the eye tracks. Two tiles drift up on crossing shears at different rates; every
-   loop spans exactly one tile so the wrap is seamless. */
+/* Fireflies — two independently blinking tiles of 3–6px glow cores and soft halos. The tiles
+   drift on crossing paths while their deliberately different pulse maps keep the field async. */
 .app-cockpit-background[data-bg="fireflies"] {
   background-image:
-    radial-gradient(1.7px 1.7px at 41px 59px, rgba(255,213,74,0.5), transparent),
-    radial-gradient(1.3px 1.3px at 167px 121px, rgba(255,213,74,0.4), transparent),
-    radial-gradient(1.5px 1.5px at 97px 203px, rgba(127,227,255,0.42), transparent),
-    radial-gradient(1.9px 1.9px at 251px 83px, rgba(255,213,74,0.45), transparent),
-    radial-gradient(1.4px 1.4px at 59px 293px, rgba(127,227,255,0.38), transparent),
-    radial-gradient(1.6px 1.6px at 313px 271px, rgba(255,213,74,0.4), transparent);
-  background-size: 240px 240px, 240px 240px, 240px 240px, 370px 370px, 370px 370px, 370px 370px;
-  animation: app-fireflies 130s linear infinite;
+    radial-gradient(48% 58% at 18% 88%, rgba(255,213,74,0.035), transparent 72%),
+    radial-gradient(42% 52% at 86% 14%, rgba(127,227,255,0.025), transparent 72%);
 }
-@keyframes app-fireflies {
-  from { background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0; }
-  to { background-position: -240px -240px, -240px -240px, -240px -240px, 370px -370px, 370px -370px, 370px -370px; }
-}
-/* …and a few larger soft embers on their own layer, slowly glowing on and off. */
 .app-cockpit-background[data-bg="fireflies"]::before {
   content: '';
   position: absolute;
   inset: 0;
   background-image:
-    radial-gradient(2.4px 2.4px at 131px 181px, rgba(255,213,74,0.5), transparent 3.4px),
-    radial-gradient(2.1px 2.1px at 347px 67px, rgba(255,213,74,0.45), transparent 3px);
-  background-size: 430px 430px;
-  animation: app-bg-shimmer 19s ease-in-out infinite;
+    radial-gradient(circle at 44px 52px, rgba(255,242,174,0.90) 0 2px, rgba(255,213,74,0.48) 2.8px, rgba(255,190,46,0.16) 5px, transparent 10px),
+    radial-gradient(circle at 176px 134px, rgba(255,235,142,0.84) 0 2.7px, rgba(255,213,74,0.42) 3.5px, rgba(255,190,46,0.13) 6px, transparent 12px),
+    radial-gradient(circle at 302px 78px, rgba(210,247,255,0.78) 0 2.2px, rgba(127,227,255,0.38) 3px, rgba(92,194,255,0.12) 5.5px, transparent 11px),
+    radial-gradient(circle at 112px 278px, rgba(255,239,156,0.88) 0 3px, rgba(255,213,74,0.40) 3.8px, rgba(255,190,46,0.12) 6.5px, transparent 13px);
+  background-size: 360px 330px;
+  animation: app-fireflies-drift-a 21s linear infinite, app-fireflies-blink-a 5.2s ease-in-out infinite;
+  will-change: background-position, opacity;
 }
-/* Contour — two off-center sets of elevation rings wandering past each other: an evolving
-   moire that reads as slow topographic weather, never as radar. 1px hairlines at ~5% alpha. */
+.app-cockpit-background[data-bg="fireflies"]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 74px 196px, rgba(255,238,150,0.86) 0 2.4px, rgba(255,213,74,0.44) 3.2px, rgba(255,190,46,0.14) 5.5px, transparent 11px),
+    radial-gradient(circle at 226px 56px, rgba(207,246,255,0.76) 0 2px, rgba(127,227,255,0.36) 2.8px, rgba(92,194,255,0.11) 5px, transparent 10px),
+    radial-gradient(circle at 354px 244px, rgba(255,242,174,0.90) 0 2.8px, rgba(255,213,74,0.46) 3.6px, rgba(255,190,46,0.14) 6px, transparent 12px),
+    radial-gradient(circle at 138px 342px, rgba(255,234,132,0.82) 0 2.2px, rgba(255,213,74,0.40) 3px, rgba(255,190,46,0.12) 5px, transparent 10px);
+  background-size: 410px 380px;
+  animation: app-fireflies-drift-b 27s linear infinite, app-fireflies-blink-b 7.6s ease-in-out -2.3s infinite;
+  will-change: background-position, opacity;
+}
+@keyframes app-fireflies-drift-a {
+  from { background-position: 0 0; }
+  to { background-position: -360px -330px; }
+}
+@keyframes app-fireflies-drift-b {
+  from { background-position: 0 0; }
+  to { background-position: 410px -380px; }
+}
+@keyframes app-fireflies-blink-a {
+  0%, 12%, 52%, 100% { opacity: 0.08; }
+  24% { opacity: 1; }
+  36% { opacity: 0.18; }
+  68% { opacity: 0.82; }
+  82% { opacity: 0.12; }
+}
+@keyframes app-fireflies-blink-b {
+  0%, 100% { opacity: 0.72; }
+  16%, 66% { opacity: 0.1; }
+  34% { opacity: 0.9; }
+  52% { opacity: 0.16; }
+  82% { opacity: 0.78; }
+}
+/* Contour — two off-center sets of elevation rings travel a wide four-waypoint loop, creating
+   a visibly evolving topographic moire without lifting the dark canvas ground. */
 .app-cockpit-background[data-bg="contour"] {
   background-image:
-    repeating-radial-gradient(circle at 18% 32%, rgba(127,227,255,0.055) 0 1px, transparent 1px 46px),
-    repeating-radial-gradient(circle at 84% 76%, rgba(181,127,255,0.05) 0 1px, transparent 1px 46px);
-  background-size: 135% 135%, 135% 135%;
-  animation: app-contour 96s ease-in-out infinite;
+    repeating-radial-gradient(circle at 18% 32%, rgba(127,227,255,0.075) 0 1px, transparent 1px 46px),
+    repeating-radial-gradient(circle at 84% 76%, rgba(181,127,255,0.07) 0 1px, transparent 1px 46px);
+  background-size: 145% 145%, 145% 145%;
+  animation: app-contour 18s linear infinite;
 }
 @keyframes app-contour {
   0%, 100% { background-position: 0% 0%, 100% 100%; }
-  50% { background-position: 55% 40%, 45% 60%; }
+  25% { background-position: 44% 18%, 58% 86%; }
+  50% { background-position: 82% 58%, 18% 42%; }
+  75% { background-position: 28% 94%, 76% 8%; }
 }
+/* User motion control. Lively inherits each mode's tuned base duration. Calm stretches every
+   animated background layer to 3× its base period; off freezes this layer and any future child
+   layers without conflating the preference with the independent reduced-motion safeguard. */
+.app-cockpit-background[data-motion="calm"][data-bg="dots"] { animation-duration: 108s; }
+.app-cockpit-background[data-motion="calm"][data-bg="grid"] { animation-duration: 141s; }
+.app-cockpit-background[data-motion="calm"][data-bg="blueprint"] { animation-duration: 174s; }
+.app-cockpit-background[data-motion="calm"][data-bg="gradient"] { animation-duration: 204s; }
+.app-cockpit-background[data-motion="calm"][data-bg="aurora"] { animation-duration: 54s; }
+.app-cockpit-background[data-motion="calm"][data-bg="starfield"]::before { animation-duration: 630s; }
+.app-cockpit-background[data-motion="calm"][data-bg="starfield"]::after { animation-duration: 360s, 19.5s; }
+.app-cockpit-background[data-motion="calm"] .app-starfield-depth::before { animation-duration: 480s; }
+.app-cockpit-background[data-motion="calm"] .app-starfield-depth::after { animation-duration: 51s; }
+.app-cockpit-background[data-motion="calm"][data-bg="nebula"] { animation-duration: 66s; }
+.app-cockpit-background[data-motion="calm"][data-bg="fireflies"]::before { animation-duration: 63s, 15.6s; }
+.app-cockpit-background[data-motion="calm"][data-bg="fireflies"]::after { animation-duration: 81s, 22.8s; }
+.app-cockpit-background[data-motion="calm"][data-bg="contour"] { animation-duration: 54s; }
+.app-cockpit-background[data-motion="off"],
+.app-cockpit-background[data-motion="off"]::before,
+.app-cockpit-background[data-motion="off"]::after,
+.app-cockpit-background[data-motion="off"] *,
+.app-cockpit-background[data-motion="off"] *::before,
+.app-cockpit-background[data-motion="off"] *::after { animation: none; }
 /* Every animation freezes gracefully under reduced motion: each mode simply shows its static
    0% frame (generalizes the original aurora-only rule to all modes and their pseudo layers). */
 @media (prefers-reduced-motion: reduce) {
@@ -999,6 +1049,16 @@ input { outline: none; font-family: var(--sans); }
   flex: 0 0 72px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.5px;
   color: var(--text-dim); text-transform: uppercase;
 }
+/* Segmented picker (shell / dial) */
+.settings-seg { display: flex; gap: 3px; }
+.settings-seg-btn {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.5px; font-weight: 600;
+  color: var(--text-dim); border: 1px solid var(--hairline); border-radius: 6px;
+  padding: 4px 10px; background: rgba(255,255,255,0.02); cursor: pointer;
+  transition: all 0.13s ease;
+}
+.settings-seg-btn:hover { color: var(--text); border-color: rgba(127,227,255,0.25); background: rgba(127,227,255,0.05); }
+.settings-seg-btn.on { color: var(--accent); border-color: rgba(127,227,255,0.5); background: rgba(127,227,255,0.1); }
 /* Motion select */
 .settings-select {
   font-family: var(--mono); font-size: 11.5px; color: var(--text); background: rgba(0,0,0,0.4);
