@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { ErrorBoundary } from './ErrorBoundary'
 import { ReviewPanel } from './ReviewPanel'
+import { UsagePanel } from './UsagePanel'
 import { WorktreesPanel } from './WorktreesPanel'
 
 const MIN_W = 280
 const MAX_W = 1400
 
-type DockMode = 'review' | 'worktrees'
+type DockMode = 'review' | 'usage' | 'worktrees'
 
 interface DockPanelDef {
   id: DockMode
@@ -28,6 +29,17 @@ const PANELS: DockPanelDef[] = [
       </svg>
     ),
     render: ({ onClose, projectId }) => <ReviewPanel projectId={projectId} onClose={onClose} />
+  },
+  {
+    id: 'usage',
+    title: 'Usage — plan quota left per agent',
+    icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+        <path d="M12 3a9 9 0 1 0 9 9" />
+        <path d="M12 3v9l6.5 3.5" />
+      </svg>
+    ),
+    render: ({ onClose }) => <UsagePanel onClose={onClose} />
   },
   {
     id: 'worktrees',

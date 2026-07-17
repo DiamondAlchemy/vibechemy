@@ -1419,3 +1419,34 @@ input { outline: none; font-family: var(--sans); }
 /* ── Callsign + title two-field namer ── */
 .pane-namer { display: inline-flex; align-items: center; gap: 4px; }
 .pane-title-input { width: 170px; border-color: var(--hairline); }
+
+/* ── Usage panel (remaining plan quota per agent) ── */
+.usage-panel { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.usage-head { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--hairline); }
+.usage-title { flex: 1; font: 12px var(--mono); color: var(--text); }
+.usage-icon-btn { width: 24px; height: 22px; display: grid; place-items: center; border: 1px solid var(--hairline); border-radius: 6px; background: rgba(255, 255, 255, 0.03); color: var(--text-dim); cursor: pointer; }
+.usage-icon-btn:hover { color: var(--text); border-color: rgba(127, 227, 255, 0.4); }
+.usage-empty { padding: 24px; color: var(--text-dim); font-size: 12px; }
+.usage-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 14px; }
+.usage-card { border: 1px solid var(--hairline); border-radius: 10px; padding: 11px 12px; background: rgba(255, 255, 255, 0.02); display: flex; flex-direction: column; gap: 9px; }
+.usage-card-head { display: flex; align-items: center; gap: 8px; }
+.usage-agent { font: 600 12.5px var(--mono); color: var(--text); }
+.usage-plan { font: 9.5px var(--mono); text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); background: rgba(255, 255, 255, 0.05); border: 1px solid var(--hairline); border-radius: 5px; padding: 1px 6px; margin-left: auto; }
+.usage-dim { font: 10.5px var(--mono); color: var(--text-faint); }
+.usage-windows { display: flex; flex-direction: column; gap: 8px; }
+.usage-win-top { display: flex; align-items: baseline; justify-content: space-between; }
+.usage-win-label { font: 10.5px var(--mono); color: var(--text-dim); }
+.usage-win-pct { font: 600 11px var(--mono); color: var(--text); }
+.usage-bar { height: 7px; border-radius: 4px; background: rgba(255, 255, 255, 0.06); overflow: hidden; margin: 3px 0 2px; }
+.usage-bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s ease; }
+.usage-win-reset { font: 9.5px var(--mono); color: var(--text-faint); }
+.usage-err { font: 10.5px/1.45 var(--mono); color: var(--red); cursor: help; word-break: break-word; }
+.usage-health { display: flex; align-items: center; gap: 7px; }
+.usage-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+.usage-dot.live { background: var(--ok, #3ecf6a); }
+.usage-dot.expired { background: var(--amber); }
+.usage-dot.blocked { background: var(--red); }
+.usage-optin { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.usage-enable { font: 11px var(--mono); color: var(--accent); background: rgba(127, 227, 255, 0.1); border: 1px solid rgba(127, 227, 255, 0.4); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+.usage-enable:hover { background: rgba(127, 227, 255, 0.18); }
+.usage-foot { font: 9.5px/1.5 var(--mono); color: var(--text-faint); padding: 4px 2px 2px; }
