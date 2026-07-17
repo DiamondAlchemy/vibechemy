@@ -5,8 +5,9 @@ sign in to the agent CLIs you want to use, register a git repository, launch an 
 merge an isolated worker's changes locally.
 
 Vibechemy is BYOK: every CLI runs against your own vendor account or subscription. Vibechemy does
-not install CLIs, open vendor login flows, store vendor credentials, or proxy model access for you.
-Do the CLI setup in Terminal before you open the app.
+not store vendor credentials or proxy model access, and its Install/Log in buttons only launch the
+vendor's own flow in a visible terminal pane — the sign-in itself is always between you and the
+vendor. You can do the CLI setup in Terminal before you open the app, or from the in-app roster.
 
 ## 1. What you need
 
@@ -96,12 +97,16 @@ The shipped worker roster is Shell, Claude Code, Codex, Antigravity, Cursor, Gro
 and OpenCode MiniMax. The orchestrator picker offers the supported lead variants. Shell uses your
 normal shell and needs no vendor login.
 
-Settings does not contain install or login buttons. Its **Agent roster** edits Claude/Codex lead and
-worker models, extra Claude account profiles, OpenCode model slugs, and custom agent commands. All
-installation and authentication happens in the vendor CLIs themselves.
+**Settings → Agent roster** shows each agent CLI's live state as chips — installed (with version)
+and signed in — plus **Install** and **Log in** buttons that run the vendor's own flow in a visible
+terminal pane. Vibechemy never touches credentials: it only detects the vendor's auth artifact and
+launches the vendor flow; you complete the sign-in yourself in that pane. The roster also edits
+Claude/Codex lead and worker models, extra Claude account profiles, OpenCode model slugs, and custom
+agent commands.
 
-You can operate with one signed-in agent. Complete every subsection whose agent you want available
-as a working chip in Vibechemy.
+The manual terminal steps below remain the authoritative path — the in-app buttons run exactly these
+commands. You can operate with one signed-in agent. Complete every subsection whose agent you want
+available as a working chip in Vibechemy.
 
 ### Claude Code
 

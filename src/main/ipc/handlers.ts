@@ -14,6 +14,7 @@ import {
   buildPaOversightBriefing,
   parsePersonalAgent
 } from '@shared/agents/personalAgent'
+import { AgentSetupService } from '../agents/AgentSetupService'
 import { startOfDay } from '../activity/digest'
 import type { ActivityLog } from '../activity/ActivityLog'
 import type { ControlPlane } from '../control/ControlPlane'
@@ -32,6 +33,9 @@ function expandHome(path: string): string {
   if (trimmed.startsWith('~/')) return resolve(homedir(), trimmed.slice(2))
   return resolve(trimmed)
 }
+
+// Self-contained (login-shell probes only) — no reason to thread through IpcDeps.
+const agentSetup = new AgentSetupService()
 
 export interface IpcDeps {
   presets: PresetRegistry
@@ -215,6 +219,7 @@ export function registerIpc({
   })
 
   ipcMain.handle(IPC.activityFeed, () => activity.since(startOfDay()))
+  ipcMain.handle(IPC.agentsStatus, () => agentSetup.probeAll())
   ipcMain.handle(IPC.paneHistory, async (_event, id: string) => {
     const session = sessions.get(id)
     return session ? capturePane(session.tmuxName, 5000).catch(() => '') : ''

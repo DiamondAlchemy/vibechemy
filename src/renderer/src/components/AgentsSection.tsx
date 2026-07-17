@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { api } from '../api'
+import type { AgentStatus } from '@shared/agents/catalog'
 import { OPENCODE_MODELS_KEY, parseOpencodeModels, opencodeIdFor, type OpencodeModel } from '@shared/agents/opencode'
 import { CUSTOM_AGENTS_KEY, parseCustomAgents, customIdFor, type CustomAgent } from '@shared/agents/custom'
 import {
@@ -349,14 +350,107 @@ function AccountProfilesEditor(): React.JSX.Element {
   )
 }
 
-/** Settings → Agents roster for model roles, account profiles, and custom agent presets. */
-export function AgentsSection(): React.JSX.Element {
+/**
+ * Settings → Agents roster: one card per agent CLI family with live installed/signed-in
+ * state, and Install / Log in buttons that run the VENDOR'S OWN flow in a visible shell
+ * terminal pane. Vibechemy never proxies or stores credentials — it only detects the result
+ * and flips the chips. The model/account/custom preset editors sit below the cards.
+ */
+export function AgentsSection({ projectId }: { projectId: string | null }): React.JSX.Element {
+  const [rows, setRows] = useState<AgentStatus[] | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [ranMsg, setRanMsg] = useState<string | null>(null)
+
+  const refresh = useCallback(async (): Promise<void> => {
+    setBusy(true)
+    try {
+      setRows(await api.agentsStatus())
+    } catch {
+      setRows([])
+    } finally {
+      setBusy(false)
+    }
+  }, [])
+
+  // Mount probe: async-only setState (no sync busy flip — react-hooks/set-state-in-effect).
+  useEffect(() => {
+    let alive = true
+    api
+      .agentsStatus()
+      .then((r) => {
+        if (alive) setRows(r)
+      })
+      .catch(() => {
+        if (alive) setRows([])
+      })
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  // Vendor flows are interactive → run them where the user can SEE them: a fresh shell pane in
+  // the CURRENT workspace (a pane spawned into another workspace is invisible from here — the
+  // button would look dead). Explicit '~' cwd: installers are location-agnostic and Scratch has
+  // no rootPath. The short delay lets the shell come up before tmux types.
+  const runInPane = useCallback(
+    async (cmd: string, label: string): Promise<void> => {
+      try {
+        const s = await api.spawnSession('shell', projectId, false, '~')
+        window.setTimeout(() => void api.paneType(s.id, cmd, true), 800)
+        setRanMsg(`${label} is running in a new shell pane behind this window — close Settings to watch, then ↻ here.`)
+      } catch (err) {
+        setRanMsg(`Could not open a pane — ${(err as Error).message}.`)
+      }
+    },
+    [projectId]
+  )
+
   return (
     <section className="settings-section">
-      <div className="settings-label">Agent roster</div>
+      <div className="settings-label">
+        Agents on this machine
+        <button className="agents-refresh" disabled={busy} onClick={() => void refresh()} title="Re-probe">
+          {busy ? 'probing…' : '↻'}
+        </button>
+      </div>
       <div className="settings-desc">
-        Configure the model roles and preset chips used for new terminal sessions. Authentication remains BYOK in each
-        vendor CLI.
+        Install and sign in to each agent CLI from here. Buttons run the <b>vendor&apos;s own</b> installer/sign-in in a
+        visible terminal pane — Vibechemy never sees your credentials, it only detects the result.
+      </div>
+      {ranMsg && <div className="agents-ranmsg">{ranMsg}</div>}
+      <div className="agents-grid">
+        {(rows ?? []).map((a) => (
+          <div key={a.id} className="agent-card">
+            <div className="agent-card-head">
+              <span className="agent-title">{a.title}</span>
+              <span className={`agent-chip ${a.installed ? 'on' : 'off'}`}>
+                {a.installed ? `installed${a.version ? ` · ${a.version.slice(0, 24)}` : ''}` : 'not installed'}
+              </span>
+            </div>
+            <div className="agent-card-row">
+              <span className={`agent-chip ${a.authed === true ? 'on' : a.authed === false ? 'warn' : 'dim'}`}>
+                {a.authed === true ? 'signed in' : a.authed === false ? 'not signed in' : 'sign-in unknown'}
+              </span>
+              <span className="agent-actions">
+                {!a.installed && a.install && (
+                  <button className="layout-btn" onClick={() => void runInPane(a.install!, `${a.title} install`)}>
+                    Install
+                  </button>
+                )}
+                {!a.installed && !a.install && (
+                  <span className="agent-note">no one-line installer — install per the vendor’s docs</span>
+                )}
+                {a.installed && a.login && a.authed !== true && (
+                  <button className="layout-btn" onClick={() => void runInPane(a.login!, `${a.title} sign-in`)}>
+                    Log in
+                  </button>
+                )}
+              </span>
+            </div>
+            {a.note && <div className="agent-note">{a.note}</div>}
+          </div>
+        ))}
+        {rows === null && <div className="agent-note">probing this machine…</div>}
       </div>
       <ModelsEditor />
       <div className="agents-grid">

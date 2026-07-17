@@ -34,6 +34,7 @@ export const IPC = {
   worktreesRemove: 'worktrees:remove',
   handoffToPersonalAgent: 'activity:handoff-personal-agent',
   activityFeed: 'activity:feed',
+  agentsStatus: 'agents:status', // probe installed/authed state of every agent CLI family
   paneHistory: 'session:history',
   settingsGet: 'settings:get',
   settingsSet: 'settings:set'

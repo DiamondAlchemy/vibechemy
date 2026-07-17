@@ -3,7 +3,7 @@ import { PA_INPUT_LIMITS, PA_KEYS } from '@shared/agents/personalAgent'
 import { api } from '../api'
 import { AgentsSection } from './AgentsSection'
 
-export function Settings({ onClose }: { onClose: () => void }): React.JSX.Element {
+export function Settings({ onClose, projectId }: { onClose: () => void; projectId?: string | null }): React.JSX.Element {
   const [personalAgent, setPersonalAgent] = useState({ label: '', command: '', args: '' })
   const [loaded, setLoaded] = useState(false)
 
@@ -48,7 +48,7 @@ export function Settings({ onClose }: { onClose: () => void }): React.JSX.Elemen
           </button>
         </div>
 
-        <AgentsSection />
+        <AgentsSection projectId={projectId ?? null} />
 
         <section className="settings-section">
           <div className="settings-label">Personal agent</div>

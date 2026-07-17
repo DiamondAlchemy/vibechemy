@@ -25,8 +25,9 @@ fleet:
   scroll. No hidden background processes; if an agent is working, you see it working.
 - **Spawn / steer / review** — launch an agent from a preset into its own **isolated git worktree**,
   send it follow-up instructions, view its diff, and merge it locally when it's good.
-- **Agent roster** — bring your own CLIs (Claude Code, Codex, and any command-based agent). Presets
-  are data; add your own.
+- **Agent roster** — bring your own CLIs (Claude Code, Codex, and any command-based agent). Settings
+  shows which CLIs are installed and signed in, with Install / Log in buttons that launch the
+  vendor's own flow in a visible terminal pane. Presets are data; add your own.
 - **MCP control plane** — an authenticated Model Context Protocol server so an orchestrator agent can
   drive the whole fleet through tools (`spawn_worker`, `send_to_worker`, `get_diff`, `merge_worker`, …).
 - **Personal Agent slot** — wire in your own assistant/agent CLI as a first-class orchestrator with an

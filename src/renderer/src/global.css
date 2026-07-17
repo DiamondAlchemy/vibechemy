@@ -1268,11 +1268,21 @@ input { outline: none; font-family: var(--sans); }
 .tombstone-strip { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 5; display: flex; gap: 8px; }
 
 /* ── Agents roster: Settings cards ── */
+.agents-refresh { margin-left: 10px; background: rgba(255, 255, 255, 0.06); border: 1px solid var(--hairline); border-radius: 6px; color: var(--text); cursor: pointer; font-size: 11px; padding: 2px 9px; }
+.agents-ranmsg { color: var(--amber); font-size: 12px; margin: 8px 0 0; }
 .agents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; margin-top: 12px; }
 .agent-card { background: rgba(255, 255, 255, 0.035); border: 1px solid var(--hairline); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
 .agent-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .agent-title { font-weight: 600; font-size: 13px; }
+.agent-card-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.agent-chip { font: 600 10.5px var(--mono); border-radius: 20px; padding: 2px 9px; letter-spacing: 0.4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
+.agent-chip.on { color: var(--green, #3ecf6a); background: rgba(62, 207, 106, 0.12); }
+.agent-chip.off { color: var(--text-dim); background: rgba(255, 255, 255, 0.06); }
+.agent-chip.warn { color: var(--amber); background: rgba(255, 194, 75, 0.12); }
+.agent-chip.dim { color: var(--text-dim); background: transparent; border: 1px dashed var(--hairline); }
+.agent-actions { display: flex; gap: 6px; }
 .agent-note { color: var(--text-dim); font-size: 11px; }
+.agents-banner { display: flex; align-items: center; justify-content: center; gap: 14px; background: rgba(255, 194, 75, 0.08); border-bottom: 1px solid rgba(255, 194, 75, 0.2); color: var(--text); font-size: 12.5px; padding: 8px 16px; }
 .agent-row-btn { background: transparent; border: 1px solid transparent; border-radius: 5px; color: var(--text-dim); cursor: pointer; font-size: 11px; padding: 1px 6px; }
 .agent-row-btn:hover { color: var(--text); border-color: var(--hairline); }
 

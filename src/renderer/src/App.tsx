@@ -88,6 +88,17 @@ function App(): React.JSX.Element {
     api.listPresets().then(setPresets)
   }, [])
 
+  // Agent-CLI availability on THIS machine (Agents roster): drives the first-run banner.
+  // Re-probed when Settings closes so an install/login done there flips state without a restart.
+  const [noAgents, setNoAgents] = useState(false)
+  useEffect(() => {
+    if (settingsOpen) return
+    void api
+      .agentsStatus()
+      .then((rows) => setNoAgents(rows.length > 0 && rows.every((r) => !r.installed)))
+      .catch(() => {})
+  }, [settingsOpen])
+
   const refresh = useCallback(
     () =>
       api.listSessions(currentProjectId).then((s) => {
@@ -410,6 +421,15 @@ function App(): React.JSX.Element {
         </div>
       </header>
 
+      {noAgents && (
+        <div className="agents-banner">
+          No agent CLIs are installed on this machine yet — spawn chips will fail until one is set up.
+          <button className="layout-btn" onClick={() => setSettingsOpen(true)}>
+            Set up in Settings → Agents
+          </button>
+        </div>
+      )}
+
       {sessionsOpen && (
         <SessionsPanel
           shown={shownWorkers}
@@ -425,7 +445,7 @@ function App(): React.JSX.Element {
         />
       )}
 
-      {settingsOpen && <Settings onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && <Settings onClose={() => setSettingsOpen(false)} projectId={currentProjectId} />}
 
       <div className="body">
         <Sidebar

@@ -3,6 +3,7 @@ import { electronAPI } from '@electron-toolkit/preload'
 import { IPC } from '@shared/ipc'
 import type { DiffResult, MergeResult, SessionDataMsg, SessionExitEvent } from '@shared/ipc'
 import type { McEvent } from '@shared/events'
+import type { AgentStatus } from '@shared/agents/catalog'
 import type { ActivityEvent, Preset, Project, SessionRecord, WorktreeEntry } from '@shared/types'
 
 type HandoffResult = { ok: boolean; sessionId: string | null; summoned: boolean; message?: string }
@@ -68,6 +69,7 @@ const api = {
     ipcRenderer.invoke(IPC.worktreesRemove, { path, force }),
   handoffToPersonalAgent: (projectId: string | null): Promise<HandoffResult> =>
     ipcRenderer.invoke(IPC.handoffToPersonalAgent, projectId),
+  agentsStatus: (): Promise<AgentStatus[]> => ipcRenderer.invoke(IPC.agentsStatus),
   activityFeed: (): Promise<ActivityEvent[]> => ipcRenderer.invoke(IPC.activityFeed),
   paneHistory: (id: string): Promise<string> => ipcRenderer.invoke(IPC.paneHistory, id),
   getSetting: (key: string): Promise<string | null> => ipcRenderer.invoke(IPC.settingsGet, key),
