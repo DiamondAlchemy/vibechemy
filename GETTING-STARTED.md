@@ -94,6 +94,24 @@ On first development launch, Vibechemy creates:
 A packaged build uses `~/Library/Application Support/vibechemy/`, `~/.vibechemy/orchestrator/`, and
 MCP port 4880 instead. Development mode uses port 4881 so both identities can coexist.
 
+### Updating Vibechemy
+
+To update an existing install to the latest published version, stop the running app first
+(Control-C in its Terminal window), then in the same folder you cloned before:
+
+```bash
+cd vibechemy
+git pull
+npm install
+npm run dev
+```
+
+`git pull` brings the new code and `npm install` syncs any dependency changes — it finishes in
+seconds when nothing changed; the long native build from the first install only repeats when
+Electron or a native module version actually moves. Your projects, settings, and activity live in
+`~/Library/Application Support/vibechemy-dev/`, not in the repo folder, so updating never touches
+them. There is no need to clone again — a second clone just leaves a stray copy on disk.
+
 ## 3. Install and sign in to your agents
 
 The shipped worker roster is Shell, Claude Code, Codex, Antigravity, Cursor, Grok, OpenCode GLM,
