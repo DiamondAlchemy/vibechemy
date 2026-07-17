@@ -43,6 +43,10 @@ import { SettingsStore } from './settings/SettingsStore'
 import { StandardsStore } from './standards/StandardsStore'
 import { seedStandards } from './standards/seed'
 import { UsageService } from './usage/UsageService'
+import { AsrRouter } from './voice/AsrRouter'
+import { ParakeetAsr } from './voice/ParakeetAsr'
+import { VoiceService } from './voice/VoiceService'
+import { isMicrophonePermission } from './voice/permissions'
 
 app.commandLine.appendSwitch('disable-renderer-backgrounding')
 app.commandLine.appendSwitch('disable-background-timer-throttling')
@@ -156,7 +160,10 @@ app.whenReady().then(async () => {
     return
   }
 
-  session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false))
+  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback, details) => {
+    const mediaTypes = 'mediaTypes' in details ? details.mediaTypes : undefined
+    callback(isMicrophonePermission(permission, mediaTypes))
+  })
 
   const db = openDatabase(join(app.getPath('userData'), 'vibechemy.sqlite'))
   const projects = new ProjectStore(db)
@@ -166,6 +173,13 @@ app.whenReady().then(async () => {
   const standards = new StandardsStore(db)
   seedStandards(standards)
   const settings = new SettingsStore(db)
+  const voiceInstallScript = app.isPackaged
+    ? join(process.resourcesPath, 'scripts', 'fetch-parakeet.sh')
+    : join(app.getAppPath(), 'scripts', 'fetch-parakeet.sh')
+  const voice = new VoiceService(
+    new AsrRouter([{ engine: 'parakeet', provider: new ParakeetAsr() }]),
+    voiceInstallScript
+  )
   // USAGE: per-agent remaining plan quota ("what's left on each plan"). Remaining-only — the
   // Keychain-reading adapters (Claude, Antigravity) stay behind their explicit opt-in settings.
   const usage = new UsageService((key) => settings.get(key))
@@ -294,6 +308,7 @@ app.whenReady().then(async () => {
     activity,
     settings,
     usage,
+    voice,
     control: controlPlane,
     notifyExit,
     notifyProjects: () => bus.emit('projects'),
@@ -324,6 +339,7 @@ app.whenReady().then(async () => {
 
   app.on('before-quit', () => {
     void mcp?.stop()
+    voice.dispose()
     pty.disposeAll()
     bus.dispose()
   })

@@ -28,6 +28,7 @@ import type { SessionManager } from '../sessions/SessionManager'
 import { capturePane, hasSession, sendKeys, sendKeysNoEnter, cancelCopyMode } from '../sessions/tmux'
 import type { SettingsStore } from '../settings/SettingsStore'
 import type { UsageService } from '../usage/UsageService'
+import type { AsrProvider } from '../voice/AsrProvider'
 
 function expandHome(path: string): string {
   const trimmed = path.trim()
@@ -49,6 +50,7 @@ export interface IpcDeps {
   activity: ActivityLog
   settings: SettingsStore
   usage: UsageService
+  voice: AsrProvider
   control: ControlPlane
   notifyExit: (id: string) => void
   notifyProjects: () => void
@@ -68,6 +70,7 @@ export function registerIpc({
   activity,
   settings,
   usage,
+  voice,
   control,
   notifyExit,
   notifyProjects,
@@ -239,6 +242,8 @@ export function registerIpc({
     return !app.isPackaged && version === process.versions.electron ? packageJson.version : version
   })
   ipcMain.handle(IPC.usageReport, () => usage.report())
+  ipcMain.handle(IPC.voiceStatus, () => voice.status())
+  ipcMain.handle(IPC.voiceTranscribe, (_event, wav: ArrayBuffer) => voice.transcribe(Buffer.from(wav)))
   ipcMain.handle(IPC.settingsGet, (_event, key: string) => settings.get(key))
   const writeSetting = (key: string, value: string): void => {
     settings.set(key, value)

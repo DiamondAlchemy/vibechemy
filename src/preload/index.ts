@@ -1,7 +1,7 @@
 import { clipboard, contextBridge, ipcRenderer, webUtils } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import { IPC } from '@shared/ipc'
-import type { DiffResult, MergeResult, SessionDataMsg, SessionExitEvent } from '@shared/ipc'
+import type { DiffResult, MergeResult, SessionDataMsg, SessionExitEvent, VoiceStatus } from '@shared/ipc'
 import type { McEvent } from '@shared/events'
 import type { AgentStatus } from '@shared/agents/catalog'
 import type { ActivityEvent, Preset, Project, SessionRecord, UsageReport, WorktreeEntry } from '@shared/types'
@@ -74,6 +74,8 @@ const api = {
   activityFeed: (): Promise<ActivityEvent[]> => ipcRenderer.invoke(IPC.activityFeed),
   paneHistory: (id: string): Promise<string> => ipcRenderer.invoke(IPC.paneHistory, id),
   getAppVersion: (): Promise<string> => ipcRenderer.invoke(IPC.appVersion),
+  voiceStatus: (): Promise<VoiceStatus> => ipcRenderer.invoke(IPC.voiceStatus),
+  voiceTranscribe: (wav: ArrayBuffer): Promise<string> => ipcRenderer.invoke(IPC.voiceTranscribe, wav),
   getSetting: (key: string): Promise<string | null> => ipcRenderer.invoke(IPC.settingsGet, key),
   setSetting: (key: string, value: string): Promise<void> => ipcRenderer.invoke(IPC.settingsSet, { key, value }),
   getUsageReport: (): Promise<UsageReport> => ipcRenderer.invoke(IPC.usageReport)

@@ -38,6 +38,8 @@ export const IPC = {
   agentsStatus: 'agents:status', // probe installed/authed state of every agent CLI family
   paneHistory: 'session:history',
   appVersion: 'app:version', // package.json version via app.getVersion() → the titlebar "vX.Y"
+  voiceStatus: 'voice:status', // honest on-device speech recognition availability
+  voiceTranscribe: 'voice:transcribe', // mono PCM16 WAV ArrayBuffer → local transcript
   settingsGet: 'settings:get',
   settingsSet: 'settings:set',
   usageReport: 'usage:report' // per-agent remaining plan usage (quota left) → UsageReport
@@ -68,6 +70,18 @@ export interface MergeResult {
   conflict?: boolean
   message: string
   mergedInto?: string
+}
+
+/** Honest on-device speech-recognition state for Settings and push-to-talk. */
+export interface VoiceStatus {
+  available: boolean
+  engine?: string
+  model?: string
+  modelPath?: string
+  modelInstalled?: boolean
+  reason?: string
+  /** Shell-safe command for the visible model-download pane. */
+  downloadCommand?: string
 }
 
 export type { Project, Preset, SessionRecord }

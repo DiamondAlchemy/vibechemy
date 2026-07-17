@@ -11,10 +11,17 @@ files:
   - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+extraResources:
+  - from: scripts/fetch-parakeet.sh
+    to: scripts/fetch-parakeet.sh
 asarUnpack:
   - resources/**
   - node_modules/better-sqlite3/**
   - node_modules/node-pty/**
+  # The native addon and its dynamic libraries cannot load from inside asar. Its loader resolves
+  # the platform package as a sibling, so both packages must be unpacked together.
+  - node_modules/sherpa-onnx-node/**
+  - node_modules/sherpa-onnx-darwin-arm64/**
 win:
   executableName: vibechemy
 nsis:
@@ -24,6 +31,7 @@ nsis:
   createDesktopShortcut: always
 mac:
   extendInfo:
+    - NSMicrophoneUsageDescription: Vibechemy uses the microphone for optional on-device push-to-talk dictation.
     - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
   notarize: false
