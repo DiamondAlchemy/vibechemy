@@ -22,8 +22,8 @@ const base: WorkersElsewhereInput = {
   orchPresetIds: new Set(['claude', 'codex-orch', 'profile-abc-orch']),
   leadIds: [],
   projectNames: new Map([
-    ['proj-A', 'KPI App'],
-    ['proj-B', 'Menu TSW']
+    ['proj-A', 'Web App'],
+    ['proj-B', 'Mobile App']
   ])
 }
 
@@ -33,14 +33,14 @@ describe('groupWorkersElsewhere', () => {
       [
         row({ projectId: null }), // Scratch worker
         row({ projectId: null }), // Scratch worker
-        row({ projectId: 'proj-B' }), // Menu TSW worker
+        row({ projectId: 'proj-B' }), // Mobile App worker
         row({ projectId: 'proj-A' }) // current workspace — excluded
       ],
       base
     )
     expect(groups).toEqual([
       { projectId: null, label: 'Scratch', count: 2 },
-      { projectId: 'proj-B', label: 'Menu TSW', count: 1 }
+      { projectId: 'proj-B', label: 'Mobile App', count: 1 }
     ])
   })
 
@@ -54,7 +54,7 @@ describe('groupWorkersElsewhere', () => {
       ...base,
       currentProjectId: null
     })
-    expect(groups).toEqual([{ projectId: 'proj-B', label: 'Menu TSW', count: 1 }])
+    expect(groups).toEqual([{ projectId: 'proj-B', label: 'Mobile App', count: 1 }])
   })
 
   it('excludes orchestrators by preset id and leads by session id', () => {
@@ -67,7 +67,7 @@ describe('groupWorkersElsewhere', () => {
       ],
       { ...base, leadIds: ['promoted'] }
     )
-    expect(groups).toEqual([{ projectId: 'proj-B', label: 'Menu TSW', count: 1 }])
+    expect(groups).toEqual([{ projectId: 'proj-B', label: 'Mobile App', count: 1 }])
   })
 
   it('ignores exited/failed/starting sessions (only running + detached are alive)', () => {
@@ -81,7 +81,7 @@ describe('groupWorkersElsewhere', () => {
       ],
       base
     )
-    expect(groups).toEqual([{ projectId: 'proj-B', label: 'Menu TSW', count: 2 }])
+    expect(groups).toEqual([{ projectId: 'proj-B', label: 'Mobile App', count: 2 }])
   })
 
   it('falls back to "Workspace" when a projectId has no known name', () => {
@@ -93,12 +93,12 @@ describe('groupWorkersElsewhere', () => {
     const groups = groupWorkersElsewhere(
       [
         row({ projectId: null }), // Scratch: 1
-        row({ projectId: 'proj-B' }), // Menu TSW: 2
+        row({ projectId: 'proj-B' }), // Mobile App: 2
         row({ projectId: 'proj-B' })
       ],
       base
     )
-    expect(groups.map((g) => g.label)).toEqual(['Menu TSW', 'Scratch'])
+    expect(groups.map((g) => g.label)).toEqual(['Mobile App', 'Scratch'])
   })
 
   it('returns [] when there are no workers elsewhere', () => {
