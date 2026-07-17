@@ -23,6 +23,11 @@ fleet:
 
 - **Terminal grid** — every agent runs in a real `tmux`-backed terminal you can watch, type into, and
   scroll. No hidden background processes; if an agent is working, you see it working.
+- **Optional voice dictation** — hold Right-Option anywhere in the app, speak, then release; the
+  transcript types into the focused terminal pane. A local Parakeet model runs fully on-device, so
+  audio never leaves your machine. Voice is strictly opt-in: Vibechemy ships without the model and
+  stays dormant until you download it (~600 MB) from **Settings → Voice**. If you do not want voice,
+  simply never download it.
 - **Spawn / steer / review** — launch an agent from a preset into its own **isolated git worktree**,
   send it follow-up instructions, view its diff, and merge it locally when it's good.
 - **Agent roster** — bring your own CLIs (Claude Code, Codex, OpenCode — with an editable model

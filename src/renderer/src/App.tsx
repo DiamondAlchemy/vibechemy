@@ -14,6 +14,7 @@ import { layoutsFor } from './layouts'
 import { usePaneView, readLS } from './usePaneView'
 import { useCockpitBackground, bgFileUrl } from './useCanvasDecor'
 import { useBackgroundMotion } from './useBackgroundMotion'
+import { useDictation } from './useDictation'
 import { useNow } from './hooks/useNow'
 import type { Preset, Project, SessionRecord } from '@shared/types'
 import { groupWorkersElsewhere } from '@shared/sessions/workersElsewhere'
@@ -100,6 +101,8 @@ function App(): React.JSX.Element {
   }, [leadIds])
   // Per-pane grid order + accent colors (localStorage-backed view state).
   const { reconcile, orderedShown, colorFor, swap, setColor, forget } = usePaneView()
+  // Global push-to-talk: hold Right-Option, speak, then release into the last-focused pane.
+  useDictation()
   useEffect(() => {
     api.listPresets().then(setPresets)
   }, [])
@@ -484,7 +487,7 @@ function App(): React.JSX.Element {
             </button>
             <button
               className={'icon-btn' + (settingsOpen ? ' on' : '')}
-              data-tip="Settings — agents, models, accounts, appearance"
+              data-tip="Settings — agents, models, accounts, voice, appearance"
               aria-label="Settings"
               onClick={() => setSettingsOpen((v) => !v)}
             >

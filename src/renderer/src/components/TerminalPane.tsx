@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import { Terminal, type ITerminalOptions } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
@@ -7,6 +7,7 @@ import { bracketBulkInput } from '@shared/terminal/bracketPaste'
 import { wheelToAction } from '@shared/terminal/wheelScroll'
 import { PANE_THEMES, resolvePaneTheme, xtermThemeFor } from '@shared/terminal/paneTheme'
 import { paneRegistry } from '../paneRegistry'
+import { dictationAmplitude, dictationStore, type DictationPhase } from '../dictation'
 import { SettledResizeCoordinator } from '@shared/terminal/settledResize'
 import type { SessionRecord } from '@shared/types'
 import { panePresetMeta } from '../presetMeta'
@@ -517,9 +518,17 @@ export function TerminalPane({
     }
   }
 
+  const dictation = useSyncExternalStore(dictationStore.subscribe, dictationStore.get)
+  const isDictationTarget = dictation.targetId === session.id && dictation.phase !== 'idle'
+
   return (
     <div
-      className={'pane' + (dropOver ? ' drop-target' : '') + (dragging ? ' dragging' : '')}
+      className={
+        'pane' +
+        (dropOver ? ' drop-target' : '') +
+        (dragging ? ' dragging' : '') +
+        (isDictationTarget ? ' dictating' : '')
+      }
       style={{ ['--pane-accent']: accent ? resolvePaneTheme(accent).accent : 'transparent' } as React.CSSProperties}
       onDragOver={onPaneDragOver}
       onDragLeave={(e) => {
@@ -534,6 +543,7 @@ export function TerminalPane({
           ladder (global.css). */}
       <div className={'pane-head' + (session.callsign ? ' has-callsign' : '')} onMouseDown={onMoveStart}>
         <span className="ph-left">
+          {isDictationTarget && <DictationChip phase={dictation.phase} />}
           <span
             className="pane-grip"
             draggable={!onMoveStart}
@@ -845,5 +855,47 @@ export function TerminalPane({
         </div>
       )}
     </div>
+  )
+}
+
+function DictationChip({ phase }: { phase: DictationPhase }): React.JSX.Element {
+  const barsRef = useRef<Array<HTMLSpanElement | null>>([])
+  useEffect(() => {
+    if (phase !== 'recording') return
+    let frame = 0
+    const paint = (): void => {
+      const amplitude = dictationAmplitude.current
+      barsRef.current.forEach((bar, index) => {
+        if (!bar) return
+        const height = 3 + Math.max(0, amplitude * 16 - index * 2.2)
+        bar.style.height = `${Math.min(11, height)}px`
+      })
+      frame = requestAnimationFrame(paint)
+    }
+    frame = requestAnimationFrame(paint)
+    return () => cancelAnimationFrame(frame)
+  }, [phase])
+
+  return (
+    <span className={'dict-chip' + (phase === 'transcribing' ? ' busy' : '')} data-dictation-phase={phase}>
+      {phase === 'recording' ? (
+        <>
+          <span className="dict-dot">●</span>
+          REC
+          <span className="dict-meter">
+            {[0, 1, 2, 3, 4].map((index) => (
+              <span
+                key={index}
+                ref={(element) => {
+                  barsRef.current[index] = element
+                }}
+              />
+            ))}
+          </span>
+        </>
+      ) : (
+        <>◌ transcribing…</>
+      )}
+    </span>
   )
 }

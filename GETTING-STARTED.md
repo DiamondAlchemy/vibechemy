@@ -112,6 +112,21 @@ Electron or a native module version actually moves. Your projects, settings, and
 `~/Library/Application Support/vibechemy-dev/`, not in the repo folder, so updating never touches
 them. There is no need to clone again — a second clone just leaves a stray copy on disk.
 
+### Optional: Voice dictation
+
+Vibechemy can turn speech into terminal input with Parakeet running entirely on your Mac. No audio
+or transcript is sent to a cloud service. Focus a terminal pane, hold **Right-Option**, speak, and
+release; the transcript is inserted without submitting it. **Settings → Voice** can optionally add
+a separate Enter after each transcript.
+
+The on-device model is optional and takes about 600 MB installed. Download it with **Settings →
+Voice → Download model (~600 MB)**, which opens the bundled downloader in a visible shell pane, or
+run this from the Vibechemy repository:
+
+```bash
+./scripts/fetch-parakeet.sh
+```
+
 ## 3. Install and sign in to your agents
 
 The shipped worker roster is Shell, Claude Code, Codex, Antigravity, Cursor, Grok, Kimi Code,

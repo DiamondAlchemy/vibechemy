@@ -4,6 +4,7 @@ import { BACKGROUND_MOTIONS, type BackgroundMotion } from '@shared/appearance/ba
 import { api } from '../api'
 import { AgentsSection } from './AgentsSection'
 import { readLS } from '../usePaneView'
+import type { VoiceStatus } from '@shared/ipc'
 
 // Left-nav categories: one condensed pane per category instead of one long scroll. The active
 // tab persists so reopening Settings lands where the user left off.
@@ -25,6 +26,12 @@ const SETTINGS_TABS = [
     label: 'Appearance',
     title: 'Appearance',
     sub: 'Canvas background and motion — how your workspace looks and moves.'
+  },
+  {
+    id: 'voice',
+    label: 'Voice',
+    title: 'Voice',
+    sub: 'Optional on-device push-to-talk dictation for terminal panes.'
   }
 ] as const
 type SettingsTab = (typeof SETTINGS_TABS)[number]['id']
@@ -53,6 +60,17 @@ export function Settings({
   }, [])
   const [personalAgent, setPersonalAgent] = useState({ label: '', command: '', args: '' })
   const [loaded, setLoaded] = useState(false)
+  const [voiceStatus, setVoiceStatus] = useState<VoiceStatus | null>(null)
+  const [voiceAutoSubmit, setVoiceAutoSubmit] = useState(false)
+  const [voiceMessage, setVoiceMessage] = useState<string | null>(null)
+
+  const refreshVoice = useCallback(async (): Promise<void> => {
+    try {
+      setVoiceStatus(await api.voiceStatus())
+    } catch {
+      setVoiceStatus({ available: false, reason: 'Could not read voice engine status.' })
+    }
+  }, [])
 
   useEffect(() => {
     let alive = true
@@ -65,6 +83,22 @@ export function Settings({
       setPersonalAgent({ label: label ?? '', command: command ?? '', args: args ?? '' })
       setLoaded(true)
     })
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  useEffect(() => {
+    let alive = true
+    void Promise.all([api.voiceStatus(), api.getSetting('voice.autoSubmit')])
+      .then(([status, autoSubmit]) => {
+        if (!alive) return
+        setVoiceStatus(status)
+        setVoiceAutoSubmit(autoSubmit === 'true')
+      })
+      .catch(() => {
+        if (alive) setVoiceStatus({ available: false, reason: 'Could not read voice engine status.' })
+      })
     return () => {
       alive = false
     }
@@ -154,6 +188,70 @@ export function Settings({
     </section>
   )
 
+  const runVoiceDownload = async (): Promise<void> => {
+    const status = voiceStatus ?? (await api.voiceStatus().catch(() => null))
+    if (!status?.downloadCommand) {
+      setVoiceMessage('The model download script is unavailable in this build.')
+      return
+    }
+    try {
+      const session = await api.spawnSession('shell', projectId ?? null, false, '~')
+      window.setTimeout(() => void api.paneType(session.id, status.downloadCommand!, true), 800)
+      setVoiceMessage('Download opened in a visible shell pane — close Settings to watch it, then refresh here.')
+    } catch (error) {
+      setVoiceMessage(`Could not open a download pane — ${(error as Error).message}.`)
+    }
+  }
+
+  const renderVoice = (): React.JSX.Element => (
+    <section className="settings-section" data-settings-section="voice">
+      <div className="settings-label">On-device dictation</div>
+      <div className="settings-desc">
+        Hold Right-Option anywhere in Vibechemy, speak, then release. Audio is processed locally and never leaves this
+        Mac.
+      </div>
+      <div className="settings-row">
+        <span className="settings-field-label">Engine</span>
+        <span className={`agent-chip ${voiceStatus?.available ? 'on' : 'off'}`} data-voice-engine-state>
+          {voiceStatus === null ? 'checking…' : voiceStatus.available ? 'Parakeet ready' : 'unavailable'}
+        </span>
+      </div>
+      <div className="settings-row">
+        <span className="settings-field-label">Model</span>
+        <span className={`agent-chip ${voiceStatus?.modelInstalled ? 'on' : 'off'}`} data-voice-model-state>
+          {voiceStatus === null ? 'checking…' : voiceStatus.modelInstalled ? 'installed' : 'not installed'}
+        </span>
+        <span className="agent-note">{voiceStatus?.model ?? 'Parakeet TDT 0.6B v3'}</span>
+      </div>
+      {voiceStatus?.reason && <div className="settings-desc voice-reason">{voiceStatus.reason}</div>}
+      {voiceMessage && <div className="agents-ranmsg">{voiceMessage}</div>}
+      <div className="settings-row">
+        <button className="layout-btn" onClick={() => void runVoiceDownload()}>
+          Download model (~600 MB)
+        </button>
+        <button className="layout-btn" onClick={() => void refreshVoice()}>
+          Refresh status
+        </button>
+      </div>
+      <label className={'iso-toggle' + (voiceAutoSubmit ? ' on' : '')}>
+        <input
+          className="voice-toggle-input"
+          type="checkbox"
+          checked={voiceAutoSubmit}
+          onChange={(event) => {
+            const enabled = event.target.checked
+            setVoiceAutoSubmit(enabled)
+            void api.setSetting('voice.autoSubmit', String(enabled))
+          }}
+        />
+        <span className="switch">
+          <span className="knob" />
+        </span>
+        <span>Auto-submit with a separate Enter after dictation</span>
+      </label>
+    </section>
+  )
+
   const active = SETTINGS_TABS.find((item) => item.id === tab) ?? SETTINGS_TABS[0]
 
   return (
@@ -187,6 +285,7 @@ export function Settings({
             {tab === 'agents' && renderAgents()}
             {tab === 'personal-agent' && renderPersonalAgent()}
             {tab === 'appearance' && renderAppearance()}
+            {tab === 'voice' && renderVoice()}
           </div>
         </div>
       </div>
