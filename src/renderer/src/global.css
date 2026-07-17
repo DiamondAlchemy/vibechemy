@@ -1179,8 +1179,10 @@ input { outline: none; font-family: var(--sans); }
 .zoom-focus .canvas-notes,
 .zoom-focus .canvas-images,
 .zoom-focus .canvas-texts,
+.zoom-focus .canvas-widgets,
 .zoom-focus .free-ink,
-.zoom-focus .free-empty-hint { visibility: hidden; }
+.zoom-focus .free-empty-hint,
+.zoom-focus .widget-rail { visibility: hidden; }
 .free-pane.zoom-hidden { visibility: hidden; pointer-events: none; }
 /* Focus is a SPOTLIGHT, not full-screen: FreePaneLayout passes the pure
    focusRect geometry (~2x the pane, centered, capped at 85% viewport) as the pane's inline rect —
@@ -1450,3 +1452,36 @@ input { outline: none; font-family: var(--sans); }
 .usage-enable { font: 11px var(--mono); color: var(--accent); background: rgba(127, 227, 255, 0.1); border: 1px solid rgba(127, 227, 255, 0.4); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
 .usage-enable:hover { background: rgba(127, 227, 255, 0.18); }
 .usage-foot { font: 9.5px/1.5 var(--mono); color: var(--text-faint); padding: 4px 2px 2px; }
+
+/* ============================================================================================
+   Free-movable widgets: widget cards detached from the rail float on the canvas.
+   The layer matches the notes layer exactly — z6 inside the .free-surface stacking context
+   (above panes z1/z5, below ink z8), pointer-events:none with each card auto — and hides in
+   Focus mode with the rest of the non-focused board content. Card chrome/body styles are
+   reused from widgets.css (.widget-card / .widget-card-head / .widget-card-body); geometry
+   (left/top/width/height from fractional fx/fy/fw/fh) rides inline like every decor card.
+   ============================================================================================ */
+.canvas-widgets { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
+.canvas-widget {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+  box-shadow: 0 10px 26px -12px rgba(0, 0, 0, 0.7);
+}
+.canvas-widget-grip { flex: 0 0 auto; color: var(--text-faint); font-size: 10px; cursor: grab; }
+.canvas-widget .widget-card-head { flex: 0 0 auto; touch-action: auto; } /* mouse drag, not pointer-capture */
+/* The body fills whatever size the card is resized to (the rail's 250px cap is a RAIL notion) and
+   scrolls only when the content genuinely overflows the enlarged card. */
+.canvas-widget .widget-card-body { flex: 1 1 auto; min-height: 0; max-height: none; }
+/* Corner resize handle — the .canvas-note-resize affordance on the widget's rounded corner. */
+.canvas-widget-resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 15px;
+  height: 15px;
+  cursor: nwse-resize;
+  background: linear-gradient(135deg, transparent 48%, rgba(255, 255, 255, 0.22) 48%);
+  border-radius: 0 0 9px 0;
+}

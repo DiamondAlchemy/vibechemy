@@ -6,10 +6,14 @@ import { CanvasFrame } from './CanvasFrame'
 import { CanvasImageNode } from './CanvasImageNode'
 import { CanvasTextNode } from './CanvasTextNode'
 import { CanvasInk, type DrawMode } from './CanvasInk'
+import { WidgetRail } from './WidgetRail'
+import { CanvasWidget } from './CanvasWidget'
 import { api } from '../api'
 import { useFreeLayout } from '../useFreeLayout'
 import { useCanvasDecor, stageImageOnCanvas } from '../useCanvasDecor'
 import { useCanvasZoom, type ClientPoint } from '../useCanvasZoom'
+import { openWidgetsMenu, useWidgets } from '../useWidgets'
+import { WIDGET_CARD_H, WIDGET_CARD_W, isWidgetId } from '@shared/widgets/catalog'
 import { fitScale, focusRect, pickFocusPane, type ZoomLevel, type ZoomPaneBox } from '@shared/canvas/zoom'
 import {
   BG_STYLES,
@@ -145,6 +149,8 @@ export function FreePaneLayout({
     updateText,
     removeText
   } = useCanvasDecor(projectId)
+  // ONE widgets instance for both surfaces: the rail (docked cards) and the floating canvas cards.
+  const widgets = useWidgets(projectId)
   const [frontId, setFrontId] = useState<string | null>(null)
   const [drawMode, setDrawMode] = useState<DrawMode>('off')
   const [penTool, setPenTool] = useState<StrokeKind>('pen')
@@ -264,7 +270,7 @@ export function FreePaneLayout({
     sessions: sessions.length,
     tombstones: tombstones.length,
     mediaPanes: 0,
-    widgets: 0,
+    widgets: widgets.state.placed.length,
     hasUserDecor: hasUserCanvasDecor(decor)
   })
 
@@ -497,10 +503,27 @@ export function FreePaneLayout({
   // their own drops — those attach the path to the terminal instead).
   const onSurfaceDragOver = (e: React.DragEvent): void => {
     if (zoomLevel !== 'default') return // Overview/Focus geometry is scaled/overridden — no drops
-    if (e.dataTransfer.types.includes('Files')) e.preventDefault()
+    if (e.dataTransfer.types.includes('Files') || e.dataTransfer.types.includes('application/mc-widget'))
+      e.preventDefault()
   }
   const onSurfaceDrop = (e: React.DragEvent): void => {
     if (zoomLevel !== 'default') return
+    // A widget card dragged off the rail (its head's ⇱ handle) → float it at the drop point.
+    // Checked BEFORE the pane guard: floating widgets render ABOVE panes (the notes layer),
+    // so releasing over a terminal is a legitimate placement, not a pane drop.
+    if (e.dataTransfer.types.includes('application/mc-widget')) {
+      const id = e.dataTransfer.getData('application/mc-widget')
+      if (isWidgetId(id)) {
+        e.preventDefault()
+        const p = toCanvasPoint(e.clientX, e.clientY)
+        // A fresh detach lands at the rail card's exact pixel footprint, as fractions of the
+        // live surface (the pure transition falls back to defaults on a zero surface).
+        const fw = surf.w > 0 ? WIDGET_CARD_W / surf.w : undefined
+        const fh = surf.h > 0 ? WIDGET_CARD_H / surf.h : undefined
+        widgets.place(id, p.x, p.y, fw, fh)
+      }
+      return
+    }
     if ((e.target as HTMLElement).closest('.pane')) return // dropped on a terminal → let the pane handle it
     const files = Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith('image/'))
     if (files.length === 0) return
@@ -586,6 +609,13 @@ export function FreePaneLayout({
           title="Stage an image on the canvas (or paste / drag one from Finder) — drag it into a terminal later"
         >
           ＋ Image
+        </button>
+        <button
+          className="free-btn"
+          onClick={openWidgetsMenu}
+          title="Add glanceable widget cards — plan usage, sessions"
+        >
+          ＋ Widgets
         </button>
         <label className="free-bg-label" title="Canvas background">
           <span>bg</span>
@@ -822,6 +852,24 @@ export function FreePaneLayout({
               ))}
             </div>
           )}
+          {widgets.state.placed.length > 0 && (
+            <div className="canvas-widgets">
+              {widgets.state.placed.map((p) => (
+                <CanvasWidget
+                  key={p.id}
+                  placed={p}
+                  projectId={projectId}
+                  surfW={surf.w}
+                  surfH={surf.h}
+                  toCanvasPoint={toCanvasPoint}
+                  onMove={(fx, fy) => widgets.place(p.id, fx, fy)}
+                  onResize={(fw, fh) => widgets.resize(p.id, fw, fh)}
+                  onDock={() => widgets.dock(p.id)}
+                  onRemove={() => widgets.remove(p.id)}
+                />
+              ))}
+            </div>
+          )}
           {sessions.map((s, i) => {
             const zs = focusMode ? (zoomFocusedId === s.id ? ('focused' as const) : ('hidden' as const)) : undefined
             return (
@@ -896,6 +944,7 @@ export function FreePaneLayout({
           </button>
         )}
       </div>
+      <WidgetRail projectId={projectId} widgets={widgets} />
     </div>
   )
 }
