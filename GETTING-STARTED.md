@@ -481,9 +481,9 @@ If compilation fails before the ABI step, re-check `xcode-select -p` and `python
 
 ### A CLI works in Terminal but Vibechemy cannot find it
 
-A macOS GUI process can start with a smaller `PATH` than your Terminal. Vibechemy asks your login
-shell for its path and also checks the common Homebrew and `~/.local/bin` locations. Verify that the
-binary is visible to a login shell:
+The roster card for that CLI shows **not installed**. A macOS GUI process can start with a smaller
+`PATH` than your Terminal. Vibechemy asks your login shell for its path and also checks the common
+Homebrew and `~/.local/bin` locations. Verify that the binary is visible to a login shell:
 
 ```bash
 /bin/zsh -ilc 'command -v claude'
@@ -525,7 +525,8 @@ worker pane.
 You are fully operational when all of these are true:
 
 - Vibechemy starts with `npm run dev` and shows no `tmux` or MCP-port error.
-- Every agent chip you intend to use has passed its terminal login and test-prompt check.
+- Every agent chip you intend to use shows installed (and, where detectable, signed in) in
+  **Settings → Agent roster** and has passed a test-prompt check.
 - Your git repository is registered and selected as a workspace.
 - A built-in orchestrator starts, reports ready, and can call `list_projects`.
 - An isolated worker appears on a `vc/` branch and accepts follow-up instructions.
