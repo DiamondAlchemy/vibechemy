@@ -57,7 +57,7 @@ export class PresetRegistry {
 
   /**
    * Resolve a preset id forgivingly for the agent/MCP spawn path: exact id first, else a UNIQUE
-   * case-insensitive substring match among spawnable presets — so "claude" → "claude-opus", "glm" →
+   * case-insensitive substring match among spawnable presets — so "opus" → "claude-opus", "glm" →
    * "opencode-glm". Throws a clear, listing error on no/ambiguous match so an orchestrator can
    * self-correct. Exact ids (including every UI spawn) are unaffected.
    */

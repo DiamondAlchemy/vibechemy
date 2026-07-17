@@ -97,10 +97,12 @@ MCP port 4880 instead. Development mode uses port 4881 so both identities can co
 ## 3. Install and sign in to your agents
 
 The shipped worker roster is Shell, Claude Code, Codex, Antigravity, Cursor, Grok, OpenCode GLM,
-and OpenCode MiniMax. The orchestrator picker offers the supported lead variants. Shell uses your
+and OpenCode MiniMax (the OpenCode chips are an editable roster — any provider/model OpenCode
+supports can be added; see its section below). The orchestrator picker offers the supported lead
+variants. Shell uses your
 normal shell and needs no vendor login.
 
-**Settings → Agent roster** shows each agent CLI's live state as chips — installed (with version)
+**Settings → Agents** shows each agent CLI's live state as chips — installed (with version)
 and signed in — plus **Install** and **Log in** buttons that run the vendor's own flow in a visible
 terminal pane. Vibechemy never touches credentials: it only detects the vendor's auth artifact and
 launches the vendor flow; you complete the sign-in yourself in that pane. The roster also edits
@@ -139,13 +141,13 @@ claude --version
 
 Run `claude` once more and submit a harmless prompt such as “Reply with OK.” Claude is ready when it
 answers without returning to a login screen. Vibechemy uses Claude for both lead and worker presets;
-you can change their model names separately under **Settings → Agent roster**.
+you can change their model names separately under **Settings → Agents**.
 
 #### Optional: add more Claude subscriptions
 
 Vibechemy can keep additional Claude logins in isolated credential stores:
 
-1. Open **Settings → Agent roster → Extra Claude accounts**.
+1. Open **Settings → Agents → Extra Claude accounts**.
 2. Select **+ Add account** and give the account a recognizable label.
 3. Choose **Orchestrator only** for a lead chip, or **Orchestrator + worker** for both chip types.
 4. Close Settings, open the orchestrator **＋** picker, and summon the named account.
@@ -183,7 +185,7 @@ codex --version
 
 Start `codex` and submit a harmless test prompt. It is ready when it answers without asking you to
 sign in. You can set different lead and worker model/effort values under
-**Settings → Agent roster**; blank values use the Codex CLI defaults.
+**Settings → Agents**; blank values use the Codex CLI defaults.
 
 ### Antigravity
 
@@ -309,9 +311,18 @@ opencode -m minimax/MiniMax-M3
 ```
 
 In each session, submit a harmless prompt and confirm that the selected provider answers. If a slug
-changes, run `opencode models`, then update the corresponding row under
-**Settings → Agent roster → Models**. Each row becomes a worker chip; newly opened panes use the
-edited slug.
+changes, run `opencode models`, then update the corresponding row in the
+**Models — each row is a spawn chip** block under **Settings → Agents**. Each row becomes a worker
+chip; newly opened panes use the edited slug.
+
+**OpenCode is not limited to GLM and MiniMax.** Those two are just the shipped defaults of an
+editable roster: any provider/model that OpenCode supports can become a worker chip. Run
+`opencode models` to see what your signed-in providers offer, then add a row in the
+**Models — each row is a spawn chip** block under **Settings → Agents** (a label plus the
+`provider/model` slug, **+ Add model**) — the chip appears immediately, no restart needed. You can also just ask your orchestrator to do it:
+its `configure_agents` tool adds and removes OpenCode models conversationally. Either way, the
+provider must be signed in (`opencode auth login`) first, or OpenCode silently falls back to its
+default model.
 
 ### Any other CLI
 
@@ -320,7 +331,7 @@ Vibechemy can launch any terminal agent with a command line:
 1. Use the vendor's install page when Vibechemy's maintained roster has no install command.
 2. Install and sign in from Terminal using the vendor's flow.
 3. Run `command -v` with that CLI's binary name, then start it and complete one test prompt.
-4. Open Vibechemy's gear button, find **Settings → Agent roster → Custom agents**, and select
+4. Open Vibechemy's gear button, find **Settings → Agents → Custom agents**, and select
    **+ Add agent**.
 5. Enter a label and launch command. The saved row becomes a live worker chip.
 
@@ -529,7 +540,7 @@ You are fully operational when all of these are true:
 
 - Vibechemy starts with `npm run dev` and shows no `tmux` or MCP-port error.
 - Every agent chip you intend to use shows installed (and, where detectable, signed in) in
-  **Settings → Agent roster** and has passed a test-prompt check.
+  **Settings → Agents** and has passed a test-prompt check.
 - Your git repository is registered and selected as a workspace.
 - A built-in orchestrator starts, reports ready, and can call `list_projects`.
 - An isolated worker appears on a `vc/` branch and accepts follow-up instructions.
