@@ -73,6 +73,7 @@ const api = {
   agentsStatus: (): Promise<AgentStatus[]> => ipcRenderer.invoke(IPC.agentsStatus),
   activityFeed: (): Promise<ActivityEvent[]> => ipcRenderer.invoke(IPC.activityFeed),
   paneHistory: (id: string): Promise<string> => ipcRenderer.invoke(IPC.paneHistory, id),
+  getAppVersion: (): Promise<string> => ipcRenderer.invoke(IPC.appVersion),
   getSetting: (key: string): Promise<string | null> => ipcRenderer.invoke(IPC.settingsGet, key),
   setSetting: (key: string, value: string): Promise<void> => ipcRenderer.invoke(IPC.settingsSet, { key, value })
 }

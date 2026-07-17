@@ -50,6 +50,15 @@ app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
 let mainWindow: BrowserWindow | null = null
 
 function createWindow(initialBounds?: Partial<Electron.Rectangle>): void {
+  // Dev runs the stock Electron binary, whose Dock icon is Electron's default — set the real app
+  // icon at runtime so an unpackaged instance is recognizable. Packaged builds carry build/icon.icns.
+  if (!app.isPackaged && process.platform === 'darwin') {
+    try {
+      app.dock?.setIcon(icon)
+    } catch {
+      /* a missing/bad asset must never block window creation */
+    }
+  }
   mainWindow = new BrowserWindow({
     width: initialBounds?.width ?? 1280,
     height: initialBounds?.height ?? 820,
@@ -63,6 +72,7 @@ function createWindow(initialBounds?: Partial<Electron.Rectangle>): void {
     trafficLightPosition: { x: 14, y: 13 },
     backgroundColor: '#000000',
     ...(process.platform === 'linux' ? { icon } : {}),
+    // (macOS dev gets the real icon via app.dock.setIcon below — packaged builds use build/icon.icns)
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,

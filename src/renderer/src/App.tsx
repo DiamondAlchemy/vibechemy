@@ -47,6 +47,13 @@ function App(): React.JSX.Element {
   )
   const [activeOrchId, setActiveOrchId] = useState<string | null>(null) // which dock tab is shown
   const [hiddenIds, setHiddenIds] = useState<string[]>([]) // worker panes hidden from the grid (tmux stays alive → reopenable)
+  const [appVer, setAppVer] = useState('') // "major.minor" from package.json via app.getVersion() — never hardcoded
+  useEffect(() => {
+    api
+      .getAppVersion()
+      .then((v) => setAppVer(v.split('.').slice(0, 2).join('.')))
+      .catch(() => {}) // no version chip is better than a wrong one
+  }, [])
   const [sessionsOpen, setSessionsOpen] = useState(false) // the Sessions popover
   const [settingsOpen, setSettingsOpen] = useState(false) // the Settings modal
   // Worker-grid layout id; null = auto grid, 'free' = the freeform canvas. Persisted so the choice
@@ -393,18 +400,19 @@ function App(): React.JSX.Element {
         <div className="brand">
           <span className="logo-glyph">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.4" opacity="0.65" />
               <path
-                d="M12 2 L21 7 V17 L12 22 L3 17 V7 Z"
+                d="M8 8.5 L12 12 L8 15.5"
                 stroke="currentColor"
-                strokeWidth="1.6"
+                strokeWidth="1.8"
+                strokeLinecap="round"
                 strokeLinejoin="round"
               />
-              <circle cx="12" cy="12" r="2.6" fill="currentColor" />
+              <path d="M12.5 16 H16.5" stroke="var(--violet)" strokeWidth="1.8" strokeLinecap="round" />
             </svg>
           </span>
           <span className="wordmark">Vibechemy</span>
-          {/* TODO: read from app.getVersion() (IPC handler + preload method) instead of hardcoding */}
-          <span className="ver">v0.1</span>
+          {appVer && <span className="ver">v{appVer}</span>}
         </div>
 
         <div className="center">

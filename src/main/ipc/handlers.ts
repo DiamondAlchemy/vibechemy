@@ -1,7 +1,8 @@
-import { BrowserWindow, Menu, clipboard, dialog, ipcMain } from 'electron'
+import { app, BrowserWindow, Menu, clipboard, dialog, ipcMain } from 'electron'
 import { existsSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { resolve } from 'node:path'
+import packageJson from '../../../package.json'
 import { IPC } from '@shared/ipc'
 import { CUSTOM_AGENTS_KEY, parseCustomAgents, presetsFromCustomAgents } from '@shared/agents/custom'
 import { EFFORT_SETTING_PREFIX, MODEL_SETTING_PREFIX } from '@shared/agents/models'
@@ -227,6 +228,12 @@ export function registerIpc({
   ipcMain.handle(IPC.paneHistory, async (_event, id: string) => {
     const session = sessions.get(id)
     return session ? capturePane(session.tmuxName, 5000).catch(() => '') : ''
+  })
+  ipcMain.handle(IPC.appVersion, () => {
+    const version = app.getVersion()
+    // Direct-file dev launches identify as the Electron binary; packaged builds already carry
+    // the package version in app metadata.
+    return !app.isPackaged && version === process.versions.electron ? packageJson.version : version
   })
   ipcMain.handle(IPC.settingsGet, (_event, key: string) => settings.get(key))
   const writeSetting = (key: string, value: string): void => {

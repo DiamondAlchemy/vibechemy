@@ -37,6 +37,7 @@ export const IPC = {
   activityFeed: 'activity:feed',
   agentsStatus: 'agents:status', // probe installed/authed state of every agent CLI family
   paneHistory: 'session:history',
+  appVersion: 'app:version', // package.json version via app.getVersion() → the titlebar "vX.Y"
   settingsGet: 'settings:get',
   settingsSet: 'settings:set'
 } as const
