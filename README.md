@@ -68,6 +68,26 @@ Then:
 `npm install` compiles native modules (`better-sqlite3`, `node-pty`) from source, so you also need the
 **Xcode Command Line Tools** (`xcode-select --install`) and **python3**.
 
+## Connecting your agents (it's automatic)
+
+There is no MCP setup step. Vibechemy **is** the MCP server: on first launch it generates an auth
+token (stored owner-only in its app data as `mcp-token`) and starts an authenticated control plane on
+`127.0.0.1:4880` (`4881` in dev). When you summon an **orchestrator** from the dock, the app writes
+that CLI's own client config for it — Claude Code gets a generated `--mcp-config`, Codex gets inline
+`-c mcp_servers.vibechemy.*` overrides, and so on — so the pane opens already holding the fleet tools
+(`spawn_worker`, `send_to_worker`, `get_diff`, `merge_worker`, …) plus an operating briefing that
+teaches it the protocol. The Personal Agent slot is wired the same way.
+
+Two deliberate boundaries:
+
+- **Workers never inherit the control plane.** Only summoned orchestrators get the tools; a plain
+  worker pane is just the CLI, so it can never spawn or merge anything itself.
+- **Bring your own keys.** The app never touches your credentials — install and sign in to each CLI
+  yourself; Vibechemy only detects the result and lights up the roster.
+
+Power-user path: any external MCP client can drive the same control plane directly — point it at
+`http://127.0.0.1:4880/mcp` with `Authorization: Bearer <contents of mcp-token>`.
+
 ## The terminal gesture cheat sheet
 
 Every pane behaves the same, whichever CLI is inside it:
