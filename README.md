@@ -57,6 +57,8 @@ npm install
 npm run dev        # launches the app in dev
 ```
 
+Full walkthrough: [GETTING-STARTED.md](./GETTING-STARTED.md).
+
 Then:
 
 1. Register a project (point it at a git repo on your machine, or drag a folder from Finder onto the sidebar).
