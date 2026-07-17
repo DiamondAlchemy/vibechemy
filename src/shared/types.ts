@@ -108,3 +108,40 @@ export interface WorktreeEntry {
 // A self-reported work state (distinct from the OS-level SessionStatus): a process can be
 // 'running' AND 'needs_review'. Set via the set_task MCP tool; absent until a worker reports.
 export type TaskState = 'working' | 'needs_review' | 'blocked' | 'done'
+
+// --- Remaining plan usage: per-agent quota left on the sub/plan ----------------------------------
+// Honesty contract: available:false = no source at all (NO SOURCE YET); error != null = a real
+// source that failed (surfaced verbatim); never invented numbers, never silent zeros.
+
+/** One rolling quota window (5h session, weekly, or per-model weekly). Providers return a
+ *  rolling-window PERCENT, not an absolute count — remainingPct is the one field they all yield. */
+export interface UsageWindow {
+  id: string // 'session' | 'weekly' | 'weekly-opus' | 'weekly-sonnet'
+  label: string // '5h' | 'Weekly' | 'Weekly (Opus)'
+  remainingPct: number // 0..100 REMAINING (already normalized: 100 - used, or provider's own remaining)
+  resetAt: number | null // epoch ms when the window rolls over
+  severity: 'normal' | 'warning' | 'critical' | null // provider hint if present; else derive from pct
+}
+
+export interface UsageRemaining {
+  plan: string | null // display tier: 'Claude Max' | 'prolite' | 'pro' | 'standard-tier'
+  windows: UsageWindow[] // 0+ windows; [] is valid when only a health light exists (Grok)
+  health: 'live' | 'expired' | 'blocked' | null // validity light for providers with no gauge
+  note: string | null // one-line honest caveat ("no proactive counter — status light only")
+}
+
+export interface UsageRow {
+  id: string // usage-scoped: 'claude-code' | 'codex' | 'kimi' | 'grok' | 'opencode-glm' | 'opencode-minimax'
+  label: string
+  burnId: string | null // reserved cross-report join key (null = none); the remaining-only panel ignores it
+  available: boolean // false = no remaining source → NO SOURCE YET
+  needsOptIn?: boolean // true = a source exists but is gated behind an explicit user opt-in (Keychain)
+  optInKey?: string // the setting the Enable button flips (present when needsOptIn)
+  error: string | null // source exists but failed this poll — verbatim (never silent zeros)
+  remaining: UsageRemaining | null
+}
+
+export interface UsageReport {
+  generatedAt: number
+  agents: UsageRow[]
+}
