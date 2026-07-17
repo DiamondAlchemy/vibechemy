@@ -239,9 +239,9 @@ app.whenReady().then(async () => {
     if (mainWindow && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send(IPC.sessionExit, event)
   }
   const pty = new PtyBridge(
-    (sessionId, data) => {
+    (sessionId, data, viewerId) => {
       if (mainWindow && !mainWindow.webContents.isDestroyed()) {
-        mainWindow.webContents.send(IPC.sessionData, { sessionId, data })
+        mainWindow.webContents.send(IPC.sessionData, { sessionId, data, viewerId })
       }
     },
     (sessionId) => {

@@ -25,7 +25,7 @@ afterEach(async () => {
 })
 
 function uniqueName(tag: string): string {
-  const n = `mc_selfheal_${tag}_${process.pid}_${Math.random().toString(36).slice(2, 8)}`
+  const n = `vibechemy_selfheal_${tag}_${process.pid}_${Math.random().toString(36).slice(2, 8)}`
   names.push(n)
   return n
 }
@@ -39,7 +39,7 @@ describe('PtyBridge self-heal (integration, real tmux)', () => {
       () => {},
       (id) => exited.push(id)
     )
-    bridge.attach(name, name, 80, 24)
+    bridge.attach(name, name, 80, 24, 'viewer-heal')
     await wait(600)
     expect(await countClients(name)).toBe(1)
 
@@ -65,11 +65,11 @@ describe('PtyBridge self-heal (integration, real tmux)', () => {
       () => {},
       () => {}
     )
-    bridge.attach(name, name, 80, 24)
+    bridge.attach(name, name, 80, 24, 'viewer-detach')
     await wait(600)
     expect(await countClients(name)).toBe(1)
 
-    bridge.detach(name) // deliberate: kill the viewer, keep the session
+    await bridge.detach(name) // deliberate: kill the viewer, keep the session
     await wait(1500) // well past the heal backoff — a heal would have re-attached by now
     expect(await countClients(name)).toBe(0) // stayed detached; the session is still alive though
     expect(await hasSession(name)).toBe(true)
@@ -85,7 +85,7 @@ describe('PtyBridge self-heal (integration, real tmux)', () => {
       () => {},
       (id) => exited.push(id)
     )
-    bridge.attach(name, name, 80, 24)
+    bridge.attach(name, name, 80, 24, 'viewer-gone')
     await wait(600)
     expect(await countClients(name)).toBe(1)
 
@@ -114,7 +114,7 @@ describe('PtyBridge self-heal (integration, real tmux)', () => {
         capturedHeal = fn
       }
     )
-    bridge.attach(name, name, 80, 24)
+    bridge.attach(name, name, 80, 24, 'viewer-close-mid-heal')
     await wait(600)
     expect(await countClients(name)).toBe(1)
 
@@ -127,7 +127,7 @@ describe('PtyBridge self-heal (integration, real tmux)', () => {
     // The user closes/hides the pane during the backoff — a deliberate teardown, but the client is
     // already dead so detach() can't mark `closing`; it clears attachInfo, and the pending heal must
     // read that absence and BAIL rather than resurrect a client with no viewer.
-    bridge.detach(name)
+    await bridge.detach(name)
     capturedHeal!()
     await wait(600)
     expect(await countClients(name)).toBe(0) // no ghost re-attach

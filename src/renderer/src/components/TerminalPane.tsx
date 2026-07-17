@@ -7,6 +7,7 @@ import { bracketBulkInput } from '@shared/terminal/bracketPaste'
 import { wheelToAction } from '@shared/terminal/wheelScroll'
 import { PANE_THEMES, resolvePaneTheme, xtermThemeFor } from '@shared/terminal/paneTheme'
 import { paneRegistry } from '../paneRegistry'
+import { SettledResizeCoordinator } from '@shared/terminal/settledResize'
 import type { SessionRecord } from '@shared/types'
 import { panePresetMeta } from '../presetMeta'
 
@@ -35,7 +36,8 @@ export function TerminalPane({
   onSetColor,
   closeTitle,
   onMoveStart,
-  transparentBackground = false
+  transparentBackground = false,
+  freshViewerOnResize = false
 }: {
   session: SessionRecord
   presetLabel?: string
@@ -49,6 +51,8 @@ export function TerminalPane({
   closeTitle?: string // overrides the ✕ tooltip (the dock routes ✕ through close/demote)
   onMoveStart?: (e: React.MouseEvent) => void // Free mode: mousedown on the header starts a pane move
   transparentBackground?: boolean // Free-mode glass — rethemed LIVE; mounted panes flip with the toggle
+  /** Free canvas only: settled resizes replace the tmux viewer and reset xterm instead of reflowing it live. */
+  freshViewerOnResize?: boolean
 }): React.JSX.Element {
   const host = useRef<HTMLDivElement>(null)
   const [dropOver, setDropOver] = useState(false) // a reorder drag is hovering this pane
@@ -270,6 +274,32 @@ export function TerminalPane({
     let lastRows = 0
     let raf = 0
     let debounce = 0
+    let disposed = false
+    let activeViewerId: string | null = null
+
+    const nextViewerId = (): string => crypto.randomUUID()
+    const attachViewer = (cols: number, rows: number): Promise<void> => {
+      const viewerId = nextViewerId()
+      activeViewerId = viewerId
+      return api.attach(session.id, cols, rows, viewerId)
+    }
+    const settledResize = new SettledResizeCoordinator(
+      async ({ cols, rows }) => {
+        // Seal the old generation before asking main to detach. Main acknowledges the physical
+        // client exit; only then do we clear xterm, size the empty grid, and create one fresh viewer.
+        activeViewerId = null
+        await api.detach(session.id)
+        if (disposed) return
+        const restoreFocus = !!host.current?.contains(document.activeElement)
+        term.reset()
+        term.resize(cols, rows)
+        lastCols = cols
+        lastRows = rows
+        await attachViewer(cols, rows)
+        if (!disposed && restoreFocus) term.focus()
+      },
+      (error) => console.error(`[TerminalPane] fresh viewer resize failed for ${session.id}:`, error)
+    )
 
     // Only fit (a DOM mutation) when the proposed size actually changed — checking
     // proposeDimensions() first avoids the fit→reflow→observe→fit feedback loop.
@@ -280,21 +310,25 @@ export function TerminalPane({
       if (!dims || !isFinite(dims.cols) || !isFinite(dims.rows) || dims.cols < 1 || dims.rows < 1) return
       if (!attached) {
         fit.fit()
-        api.attach(session.id, dims.cols, dims.rows)
+        void attachViewer(dims.cols, dims.rows)
         attached = true
         lastCols = dims.cols
         lastRows = dims.rows
         term.focus() // focus once on first attach so a freshly-spawned pane is typeable
       } else if (dims.cols !== lastCols || dims.rows !== lastRows) {
-        fit.fit()
-        api.resize(session.id, dims.cols, dims.rows)
-        lastCols = dims.cols
-        lastRows = dims.rows
+        if (freshViewerOnResize) {
+          settledResize.request(dims)
+        } else {
+          fit.fit()
+          api.resize(session.id, dims.cols, dims.rows)
+          lastCols = dims.cols
+          lastRows = dims.rows
+        }
       }
     }
 
     const offData = api.onData((msg) => {
-      if (msg.sessionId === session.id) term.write(msg.data)
+      if (msg.sessionId === session.id && msg.viewerId === activeViewerId) term.write(msg.data)
     })
     // Some text inputs deliver a whole phrase as one raw burst, which a CLI can re-wrap
     // character-by-character into visible corruption. Frame such bulk bursts as a
@@ -333,6 +367,9 @@ export function TerminalPane({
     window.addEventListener('focus', repaint)
 
     return () => {
+      disposed = true
+      activeViewerId = null
+      settledResize.stop()
       cancelAnimationFrame(raf)
       clearTimeout(debounce)
       document.removeEventListener('visibilitychange', repaint)
@@ -352,7 +389,7 @@ export function TerminalPane({
       term.dispose() // also disposes the WebGL addon → frees its GPU context
       termRef.current = null
     }
-  }, [session.id])
+  }, [session.id, freshViewerOnResize])
 
   // Glass and the pane theme are LIVE inputs, not construction choices: the toolbar toggle and
   // the theme picker retheme every mounted terminal in place (allowTransparency, the

@@ -215,7 +215,7 @@ export function FreePaneLayout({
   const pendingScrollRef = useRef<{ key: string; position: CanvasScrollPosition } | null>(null)
   // Mirror of the semantic-zoom level for callbacks defined before the hook below (TDZ order);
   // synced in an effect after the hook. Scroll persistence only records DEFAULT-level positions —
-  // the programmatic scroll-to-0 of Overview must never clobber the operator's saved spot.
+  // the programmatic scroll-to-0 of Overview must never clobber the saved canvas position.
   const zoomLevelRef = useRef<ZoomLevel>('default')
   const flushScroll = useCallback((): void => {
     if (scrollTimerRef.current !== null) window.clearTimeout(scrollTimerRef.current)
@@ -855,6 +855,7 @@ export function FreePaneLayout({
                     onHide={() => onHide(s.id)}
                     onSetColor={(hex) => onSetColor(s.id, hex)}
                     transparentBackground={glassPanes}
+                    freshViewerOnResize
                   />
                 )}
               </FreePane>

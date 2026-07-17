@@ -160,11 +160,14 @@ export function registerIpc({
     }
   })
 
-  ipcMain.handle(IPC.sessionAttach, (_event, { id, cols, rows }: { id: string; cols: number; rows: number }) => {
-    const record = sessions.list().find((session) => session.id === id)
-    if (record) pty.attach(record.id, record.tmuxName, cols, rows)
-  })
-  ipcMain.handle(IPC.sessionDetach, (_event, id: string) => pty.detach(id))
+  ipcMain.handle(
+    IPC.sessionAttach,
+    (_event, { id, cols, rows, viewerId }: { id: string; cols: number; rows: number; viewerId: string }) => {
+      const record = sessions.list().find((session) => session.id === id)
+      if (record) pty.attach(record.id, record.tmuxName, cols, rows, viewerId)
+    }
+  )
+  ipcMain.handle(IPC.sessionDetach, async (_event, id: string) => pty.detach(id))
   ipcMain.on(IPC.sessionWrite, (_event, { id, data }: { id: string; data: string }) => pty.write(id, data))
   ipcMain.on(IPC.sessionResize, (_event, { id, cols, rows }: { id: string; cols: number; rows: number }) =>
     pty.resize(id, cols, rows)

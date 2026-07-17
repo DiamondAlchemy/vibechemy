@@ -28,8 +28,8 @@ const api = {
     ipcRenderer.invoke(IPC.paneType, { id, text, submit }),
   paneContextMenu: (selection: string): void => ipcRenderer.send(IPC.paneContextMenu, selection),
   paneCancelCopyMode: (id: string): void => ipcRenderer.send(IPC.paneCancelCopyMode, id),
-  attach: (id: string, cols: number, rows: number): Promise<void> =>
-    ipcRenderer.invoke(IPC.sessionAttach, { id, cols, rows }),
+  attach: (id: string, cols: number, rows: number, viewerId: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.sessionAttach, { id, cols, rows, viewerId }),
   detach: (id: string): Promise<void> => ipcRenderer.invoke(IPC.sessionDetach, id),
   write: (id: string, data: string): void => ipcRenderer.send(IPC.sessionWrite, { id, data }),
   resize: (id: string, cols: number, rows: number): void => ipcRenderer.send(IPC.sessionResize, { id, cols, rows }),

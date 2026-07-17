@@ -43,6 +43,8 @@ export const IPC = {
 export interface SessionDataMsg {
   sessionId: string
   data: string
+  /** Unique renderer viewer generation; stale attach clients can never write into a replacement xterm. */
+  viewerId: string
 }
 
 export interface SessionExitEvent {
