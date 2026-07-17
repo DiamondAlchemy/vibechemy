@@ -13,16 +13,26 @@ const HEADERS = {
 export const CLAUDE_KEYCHAIN_SERVICE = 'Claude Code-credentials'
 export const CLAUDE_KEYCHAIN_OPT_IN_KEY = 'usage.claudeKeychain'
 
-/** Read a Claude Code OAuth bearer from the macOS Keychain (authoritative on macOS; the
- *  ~/.claude/.credentials.json file has empty tokens). Read-only, never persisted, never logged. */
-function readKeychainToken(execFile: UsageDeps['execFile'], service: string): Promise<string | null> {
+/** Read a Claude Code OAuth bearer from the macOS Keychain (authoritative on macOS when readable).
+ *  Read-only, never persisted, never logged. `denied` distinguishes a BLOCKED read (the item's ACL
+ *  only auto-allows the app that wrote it — another app's read needs the user's Always Allow) from
+ *  the item simply not existing (`security` exits 44, errSecItemNotFound = not signed in). */
+function readKeychainToken(
+  execFile: UsageDeps['execFile'],
+  service: string
+): Promise<{ token: string | null; denied: boolean }> {
   return new Promise((resolve) => {
     execFile('security', ['find-generic-password', '-s', service, '-w'], (err, stdout) => {
-      if (err) return resolve(null)
+      if (err) {
+        const code = (err as { code?: unknown }).code
+        return resolve({ token: null, denied: code !== 44 })
+      }
       try {
-        resolve((JSON.parse(stdout) as { claudeAiOauth?: { accessToken?: string } }).claudeAiOauth?.accessToken || null)
+        const token =
+          (JSON.parse(stdout) as { claudeAiOauth?: { accessToken?: string } }).claudeAiOauth?.accessToken || null
+        resolve({ token, denied: false })
       } catch {
-        resolve(null)
+        resolve({ token: null, denied: false })
       }
     })
   })
@@ -40,8 +50,16 @@ export function claudeAdapter(): UsageAdapter {
     optInKey: CLAUDE_KEYCHAIN_OPT_IN_KEY,
     gated: (d) => d.getSetting(CLAUDE_KEYCHAIN_OPT_IN_KEY) === 'on',
     async fetchRemaining(d: UsageDeps) {
-      const token = await readKeychainToken(d.execFile, CLAUDE_KEYCHAIN_SERVICE)
-      if (!token) throw new Error('not signed in — use Sign in on this account in Settings → Agents')
+      const kc = await readKeychainToken(d.execFile, CLAUDE_KEYCHAIN_SERVICE)
+      // Blocked Keychain fallback: claude's file store carries the real token on installs where
+      // the Keychain was unavailable at login (seen live on a fresh second machine).
+      const token = kc.token ?? d.readClaudeCredsFile().token
+      if (!token)
+        throw new Error(
+          kc.denied
+            ? 'Keychain read blocked — approve the macOS Keychain prompt (Always Allow), then retry'
+            : 'not signed in — use Sign in on this account in Settings → Agents'
+        )
       const res = await d.fetch(USAGE_URL, { headers: { Authorization: `Bearer ${token}`, ...HEADERS } })
       if (res.status === 401) throw new Error('token expired — open a pane on this account to refresh')
       if (!res.ok) throw new Error(`Anthropic HTTP ${res.status}`)

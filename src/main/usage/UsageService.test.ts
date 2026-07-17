@@ -10,13 +10,15 @@ function svc(over: Partial<UsageDeps> = {}, getSetting: (key: string) => string 
     grokSubToken: async () => 'tok',
     readOpencodeAuth: () => ({}),
     readKimiAuth: () => null,
+    readClaudeCredsFile: () => ({ exists: false, token: null }),
     kimiBin: () => 'kimi', // hermetic — the real resolver probes the filesystem
     // a spawn that never yields an id:2 → codex adapter times out fast in these tests via override
     spawn: (() => {
       throw new Error('no codex in test')
     }) as unknown as UsageDeps['spawn'],
     execFile: ((_c: string, _a: string[], cb: (e: Error | null, out: string) => void) =>
-      cb(new Error('no keychain'), '')) as unknown as UsageDeps['execFile'],
+      // exit 44 = errSecItemNotFound — models "no Keychain item" (not signed in), not a blocked read
+      cb(Object.assign(new Error('no keychain item'), { code: 44 }), '')) as unknown as UsageDeps['execFile'],
     now: () => 1000,
     ...over
   }
@@ -236,5 +238,29 @@ describe('UsageService', () => {
     const claude = (await s.report()).agents.find((r) => r.id === 'claude-code')!
     expect(claude.available).toBe(true)
     expect(claude.error).toMatch(/not signed in/)
+  })
+
+  it('claude blocked Keychain read falls back to the creds-file token (fresh-machine dogfood find)', async () => {
+    const denied = ((_c: string, _a: string[], cb: (e: Error | null, out: string) => void) =>
+      cb(Object.assign(new Error('interaction not allowed'), { code: 36 }), '')) as unknown as UsageDeps['execFile']
+    const fetchSpy = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({}) })) as unknown as typeof fetch
+    const s = svc(
+      { execFile: denied, fetch: fetchSpy, readClaudeCredsFile: () => ({ exists: true, token: 'file-tok' }) },
+      (k) => (k === 'usage.claudeKeychain' ? 'on' : null)
+    )
+    const claude = (await s.report()).agents.find((r) => r.id === 'claude-code')!
+    expect(claude.error).toBeNull()
+    const authed = (fetchSpy as ReturnType<typeof vi.fn>).mock.calls.find(
+      (c) => (c[1] as { headers: Record<string, string> })?.headers?.Authorization === 'Bearer file-tok'
+    )
+    expect(authed).toBeTruthy()
+  })
+
+  it('claude blocked Keychain read with no file token → the Always Allow hint, not "not signed in"', async () => {
+    const denied = ((_c: string, _a: string[], cb: (e: Error | null, out: string) => void) =>
+      cb(Object.assign(new Error('interaction not allowed'), { code: 36 }), '')) as unknown as UsageDeps['execFile']
+    const s = svc({ execFile: denied }, (k) => (k === 'usage.claudeKeychain' ? 'on' : null))
+    const claude = (await s.report()).agents.find((r) => r.id === 'claude-code')!
+    expect(claude.error).toMatch(/Keychain read blocked.*Always Allow/)
   })
 })
