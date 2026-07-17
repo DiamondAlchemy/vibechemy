@@ -10,7 +10,6 @@ function svc(over: Partial<UsageDeps> = {}, getSetting: (key: string) => string 
     grokSubToken: async () => 'tok',
     readOpencodeAuth: () => ({}),
     readKimiAuth: () => null,
-    readClaudeCredsFile: () => ({ exists: false, token: null }),
     kimiBin: () => 'kimi', // hermetic — the real resolver probes the filesystem
     // a spawn that never yields an id:2 → codex adapter times out fast in these tests via override
     spawn: (() => {
@@ -19,6 +18,7 @@ function svc(over: Partial<UsageDeps> = {}, getSetting: (key: string) => string 
     execFile: ((_c: string, _a: string[], cb: (e: Error | null, out: string) => void) =>
       // exit 44 = errSecItemNotFound — models "no Keychain item" (not signed in), not a blocked read
       cb(Object.assign(new Error('no keychain item'), { code: 44 }), '')) as unknown as UsageDeps['execFile'],
+    readClaudeCredsFile: () => null,
     now: () => 1000,
     ...over
   }
@@ -245,7 +245,7 @@ describe('UsageService', () => {
       cb(Object.assign(new Error('interaction not allowed'), { code: 36 }), '')) as unknown as UsageDeps['execFile']
     const fetchSpy = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({}) })) as unknown as typeof fetch
     const s = svc(
-      { execFile: denied, fetch: fetchSpy, readClaudeCredsFile: () => ({ exists: true, token: 'file-tok' }) },
+      { execFile: denied, fetch: fetchSpy, readClaudeCredsFile: () => 'file-tok' },
       (k) => (k === 'usage.claudeKeychain' ? 'on' : null)
     )
     const claude = (await s.report()).agents.find((r) => r.id === 'claude-code')!

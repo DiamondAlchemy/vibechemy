@@ -1,5 +1,5 @@
 import { spawn as nodeSpawn, execFile as nodeExecFile } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import type { UsageReport, UsageRow } from '@shared/types'
@@ -51,14 +51,13 @@ function readKimiAuth(): { accessToken: string; expiresAt: number | null } | nul
   return null
 }
 
-function readClaudeCredsFile(): { exists: boolean; token: string | null } {
-  const path = join(homedir(), '.claude', '.credentials.json')
+function readClaudeCredsFile(): string | null {
   try {
-    const parsed = JSON.parse(readFileSync(path, 'utf8')) as { claudeAiOauth?: { accessToken?: unknown } }
-    const token = parsed.claudeAiOauth?.accessToken
-    return { exists: true, token: typeof token === 'string' && token.length > 0 ? token : null }
+    const raw = readFileSync(join(homedir(), '.claude', '.credentials.json'), 'utf8')
+    const token = (JSON.parse(raw) as { claudeAiOauth?: { accessToken?: unknown } }).claudeAiOauth?.accessToken
+    return typeof token === 'string' && token.length > 0 ? token : null
   } catch {
-    return { exists: existsSync(path), token: null }
+    return null
   }
 }
 

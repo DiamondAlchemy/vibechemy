@@ -6,7 +6,9 @@ import { join } from 'node:path'
 export const KIMI_BIN_CANDIDATES = [
   '/opt/homebrew/bin/kimi',
   '/usr/local/bin/kimi',
-  join(homedir(), '.local', 'bin', 'kimi')
+  join(homedir(), '.local', 'bin', 'kimi'),
+  // The official code.kimi.com installer's default target (brew/npm never use it).
+  join(homedir(), '.kimi-code', 'bin', 'kimi')
 ]
 
 /**

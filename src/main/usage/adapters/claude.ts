@@ -53,7 +53,7 @@ export function claudeAdapter(): UsageAdapter {
       const kc = await readKeychainToken(d.execFile, CLAUDE_KEYCHAIN_SERVICE)
       // Blocked Keychain fallback: claude's file store carries the real token on installs where
       // the Keychain was unavailable at login (seen live on a fresh second machine).
-      const token = kc.token ?? d.readClaudeCredsFile().token
+      const token = kc.token ?? d.readClaudeCredsFile()
       if (!token)
         throw new Error(
           kc.denied

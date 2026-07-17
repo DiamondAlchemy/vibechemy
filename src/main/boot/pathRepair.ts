@@ -10,7 +10,14 @@ import { join } from 'node:path'
  */
 export const HOMEBREW_SENTINEL = '/opt/homebrew/bin'
 
-const FALLBACK_DIRS = [HOMEBREW_SENTINEL, '/usr/local/bin', join(homedir(), '.local', 'bin')]
+// ~/.kimi-code/bin = the official Kimi installer's default target (it PATHs via ~/.zshrc, which
+// login-shell probes never source — without this entry a fresh curl install stays invisible).
+const FALLBACK_DIRS = [
+  HOMEBREW_SENTINEL,
+  '/usr/local/bin',
+  join(homedir(), '.local', 'bin'),
+  join(homedir(), '.kimi-code', 'bin')
+]
 
 /** Current entries keep priority; captured + fallback dirs are appended, deduped. */
 export function mergePath(current: string | undefined, captured: string | undefined, fallback: string[]): string {

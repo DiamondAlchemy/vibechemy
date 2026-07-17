@@ -19,10 +19,10 @@ export interface UsageDeps {
   /** Read a settings value — used by Keychain-reading adapters (Claude, Antigravity) to check
    *  their explicit opt-in gate before touching a credential store. */
   getSetting: (key: string) => string | null
-  /** ~/.claude/.credentials.json parsed (main login only). Where the Keychain owns the creds the
-   *  file exists with empty tokens; where the Keychain was unavailable at login claude writes the
-   *  real token here — the fallback source when a cross-app Keychain read is blocked. */
-  readClaudeCredsFile: () => { exists: boolean; token: string | null }
+  /** Token from ~/.claude/.credentials.json (main login only). Where the Keychain owns the creds
+   *  the file has empty tokens (→ null); where the Keychain was unavailable at login claude writes
+   *  the real token here — the fallback source when a cross-app Keychain read is blocked. */
+  readClaudeCredsFile: () => string | null
   now: () => number
 }
 
