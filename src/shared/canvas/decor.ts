@@ -210,6 +210,10 @@ export function makeWelcomeDecor(): CanvasDecor {
           '· draw sketches right over your panes',
           '· the bg picker repaints these stars',
           '',
+          'First stop: ⚙ Settings (top right) —',
+          'install + sign in your agent CLIs there,',
+          'then summon your first agent.',
+          '',
           "I'm only a sticky note — × me whenever.",
           "I won't come back."
         ].join('\n'),
