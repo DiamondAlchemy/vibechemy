@@ -1021,7 +1021,7 @@ input { outline: none; font-family: var(--sans); }
 .panel-error-msg { font-family: var(--mono); font-size: 11px; color: var(--red); max-width: 92%; word-break: break-word; }
 
 /* =========================================================
-   SETTINGS MODAL
+   SETTINGS MODAL (left category nav + per-category pane)
 ========================================================= */
 .settings-overlay {
   position: fixed; inset: 0; z-index: 1000;
@@ -1030,12 +1030,13 @@ input { outline: none; font-family: var(--sans); }
   backdrop-filter: blur(3px);
 }
 .settings-modal {
-  width: min(560px, 92vw);
-  /* Content outgrew small laptop viewports (Agents roster): cap and scroll INSIDE —
+  width: min(820px, 94vw);
+  /* Fixed height so the nav doesn't jump between categories; the PANE scrolls inside —
      centered overflow otherwise clips BOTH top and bottom with no rescue. */
-  max-height: calc(100vh - 48px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  height: min(640px, calc(100vh - 48px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   padding: 22px 24px;
   border-radius: 12px;
   border: 1px solid var(--hairline);
@@ -1044,7 +1045,40 @@ input { outline: none; font-family: var(--sans); }
   box-shadow: 0 20px 60px -12px rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(10px);
 }
-.settings-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.settings-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex: 0 0 auto; }
+/* Left nav + content pane */
+.settings-body { display: flex; flex: 1 1 auto; min-height: 0; gap: 20px; }
+.settings-nav {
+  flex: 0 0 148px;
+  display: flex; flex-direction: column; gap: 4px;
+  padding-right: 16px;
+  border-right: 1px solid var(--hairline-2);
+}
+.settings-nav-btn {
+  text-align: left;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.6px; font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  border: 1px solid transparent; border-radius: 7px;
+  padding: 8px 10px;
+  background: transparent; cursor: pointer;
+  transition: all 0.13s ease;
+}
+.settings-nav-btn:hover { color: var(--text); border-color: rgba(127, 227, 255, 0.18); background: rgba(127, 227, 255, 0.04); }
+.settings-nav-btn.on { color: var(--accent); border-color: rgba(127, 227, 255, 0.5); background: rgba(127, 227, 255, 0.08); }
+.settings-pane {
+  flex: 1 1 auto; min-width: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 6px;
+}
+.settings-pane-head { margin-bottom: 16px; }
+.settings-pane-title {
+  margin: 0 0 4px;
+  font-family: var(--disp); font-size: 15px; font-weight: 600; letter-spacing: 0.4px;
+  color: var(--text);
+}
+.settings-pane-sub { font-size: 12px; line-height: 1.45; color: var(--text-faint); }
 .settings-title { margin: 0; font-family: var(--disp); font-size: 17px; font-weight: 600; letter-spacing: 0.5px; color: var(--text); }
 .settings-close {
   width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center;
