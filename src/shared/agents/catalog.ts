@@ -79,6 +79,18 @@ export const AGENT_CATALOG: AgentFamily[] = [
     note: 'first run signs in via your X account; SuperGrok sub covers Grok image/video'
   },
   {
+    id: 'kimi',
+    title: 'Kimi Code',
+    bin: 'kimi',
+    presets: ['kimi'],
+    // Official installer (code.kimi.com docs); also packaged in homebrew-core as kimi-code.
+    install: 'curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash',
+    login: 'kimi login',
+    // v0.24+ credential store — the same artifact the Usage panel's Kimi adapter reads.
+    authFile: '~/.kimi-code/credentials/kimi-code.json',
+    note: 'signs in via the device-code flow; also on Homebrew as kimi-code'
+  },
+  {
     id: 'opencode',
     title: 'OpenCode (GLM + MiniMax)',
     bin: 'opencode',

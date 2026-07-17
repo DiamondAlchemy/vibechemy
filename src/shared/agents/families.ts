@@ -28,7 +28,8 @@ const FAMILY_LABELS: Record<string, string> = {
   claude: 'Claude',
   codex: 'Codex',
   opencode: 'OpenCode',
-  grok: 'Grok'
+  grok: 'Grok',
+  kimi: 'Kimi'
 }
 
 /** Human label for a family command — mapped names for the known CLIs, capitalized otherwise. */

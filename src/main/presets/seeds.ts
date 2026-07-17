@@ -35,6 +35,8 @@ export const SEED_PRESETS: Preset[] = [
   { id: 'cursor', name: 'Cursor', command: 'cursor-agent', args: [], env: {}, isSeed: true, color: '#e4e4e7' },
   // xAI's Grok Build agent (`grok`) — auth rides the SuperGrok/X subscription login.
   { id: 'grok', name: 'Grok', command: 'grok', args: [], env: {}, isSeed: true, color: '#1d9bf0' },
+  // Moonshot's Kimi Code agent (`kimi`) — auth rides the Kimi subscription device-code login.
+  { id: 'kimi', name: 'Kimi', command: 'kimi', args: [], env: {}, isSeed: true, color: '#2dd4bf' },
   {
     id: 'opencode-glm',
     name: 'OpenCode · GLM',

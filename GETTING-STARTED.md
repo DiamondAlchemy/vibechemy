@@ -114,11 +114,10 @@ them. There is no need to clone again — a second clone just leaves a stray cop
 
 ## 3. Install and sign in to your agents
 
-The shipped worker roster is Shell, Claude Code, Codex, Antigravity, Cursor, Grok, OpenCode GLM,
-and OpenCode MiniMax (the OpenCode chips are an editable roster — any provider/model OpenCode
-supports can be added; see its section below). The orchestrator picker offers the supported lead
-variants. Shell uses your
-normal shell and needs no vendor login.
+The shipped worker roster is Shell, Claude Code, Codex, Antigravity, Cursor, Grok, Kimi Code,
+OpenCode GLM, and OpenCode MiniMax (the OpenCode chips are an editable roster — any provider/model
+OpenCode supports can be added; see its section below). The orchestrator picker offers the
+supported lead variants. Shell uses your normal shell and needs no vendor login.
 
 **Settings → Agents** shows each agent CLI's live state as chips — installed (with version)
 and signed in — plus **Install** and **Log in** buttons that run the vendor's own flow in a visible
@@ -287,6 +286,32 @@ grok --version
 
 Run `grok` and submit a harmless test prompt. It is ready when it answers without showing the
 first-run login again.
+
+### Kimi Code
+
+**Account:** a Kimi account whose plan includes Kimi Code.
+
+Install with the official installer (Homebrew users can `brew install kimi-code` instead):
+
+```bash
+curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash
+```
+
+Sign in with the device-code flow:
+
+```bash
+kimi login
+```
+
+Verify:
+
+```bash
+command -v kimi
+kimi --version
+```
+
+Run `kimi` and submit a harmless test prompt. It is ready when it answers without asking you to
+sign in again. The Usage panel's Kimi Code card reads the same login.
 
 ### OpenCode with GLM and MiniMax
 
