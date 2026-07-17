@@ -459,7 +459,8 @@ function App(): React.JSX.Element {
           <div className="icon-btns">
             <button
               className="icon-btn handoff-personal-agent"
-              title="Hand today's digest to your personal agent to update its memory (oversight, read-only)"
+              data-tip="End-of-day digest — hand today's activity to your personal agent so it updates its memory (read-only oversight)"
+              aria-label="Hand today's digest to your personal agent"
               onClick={handDayToPersonalAgent}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
@@ -470,7 +471,8 @@ function App(): React.JSX.Element {
             <button
               data-sessions-toggle
               className={'icon-btn' + (sessionsOpen ? ' on' : '')}
-              title="Sessions — show, hide, or end your terminals"
+              data-tip="Sessions — show, hide, or end your terminals"
+              aria-label="Sessions"
               onClick={() => setSessionsOpen((v) => !v)}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
@@ -482,7 +484,8 @@ function App(): React.JSX.Element {
             </button>
             <button
               className={'icon-btn' + (settingsOpen ? ' on' : '')}
-              title="Settings"
+              data-tip="Settings — agents, models, accounts, appearance"
+              aria-label="Settings"
               onClick={() => setSettingsOpen((v) => !v)}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">

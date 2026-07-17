@@ -124,8 +124,9 @@ export function RightDock({
         {PANELS.map((panel) => (
           <button
             key={panel.id}
-            className={'dock-railbtn' + (open && mode === panel.id ? ' active' : '')}
-            title={panel.title}
+            className={'dock-railbtn tip-left' + (open && mode === panel.id ? ' active' : '')}
+            data-tip={panel.title}
+            aria-label={panel.title}
             onClick={() => onRail(panel.id)}
           >
             {panel.icon}

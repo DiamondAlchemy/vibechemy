@@ -469,6 +469,29 @@ input { outline: none; font-family: var(--sans); }
 .icon-btn { position: relative; }
 .icon-badge { position: absolute; top: -3px; right: -3px; min-width: 14px; height: 14px; padding: 0 3px; border-radius: 7px; background: var(--accent); color: var(--bg); font-size: 9px; font-weight: 700; line-height: 14px; text-align: center; }
 
+/* Fast hover tooltips (data-tip). Native title tooltips take ~1.5s to appear and render as a
+   tiny OS strip, so the cryptic icon buttons read as unlabeled — these appear in ~0.25s, styled
+   to the app. Pure CSS; pointer-events:none so a tip can never steal the hover; default placement
+   is below + right-aligned (titlebar cluster sits at the window edge), .tip-left flips to the
+   left for the far-right dock rail. */
+[data-tip] { position: relative; }
+[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute; top: calc(100% + 7px); right: -4px;
+  width: max-content; max-width: 250px;
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.2px; line-height: 1.45;
+  text-align: left; white-space: normal;
+  color: var(--text); background: rgba(9, 14, 30, 0.97);
+  border: 1px solid rgba(127, 227, 255, 0.22); border-radius: 7px;
+  padding: 5px 8px;
+  opacity: 0; transform: translateY(-2px); pointer-events: none;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  z-index: 400;
+}
+[data-tip]:hover::after { opacity: 1; transform: translateY(0); transition-delay: 0.25s; }
+.tip-left[data-tip]::after { top: 50%; right: calc(100% + 8px); transform: translateY(-50%) translateX(2px); }
+.tip-left[data-tip]:hover::after { transform: translateY(-50%) translateX(0); }
+
 /* Sessions popover (title-bar ⊞) */
 .sessions-pop {
   position: absolute; top: 42px; right: 14px; z-index: 200; width: 300px; max-height: 60vh; overflow-y: auto;
