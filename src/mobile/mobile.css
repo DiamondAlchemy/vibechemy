@@ -1,0 +1,51 @@
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body {
+  font-family: -apple-system, system-ui, sans-serif;
+  background: #0a0e14;
+  color: #e6edf3;
+  /* respect the notch / home indicator */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+.mc-mobile { padding: 16px; }
+
+.mc-fleet-head { font-size: 20px; font-weight: 600; padding: 12px 4px; }
+.mc-worker-list { list-style: none; margin: 0; padding: 0; }
+.mc-worker-row {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; min-height: 56px; /* Apple 44pt+ touch target */
+  padding: 12px 14px; text-align: left;
+  background: #121822; color: inherit;
+  border: 0; border-radius: 12px; margin-bottom: 8px;
+  font-size: 15px;
+}
+.mc-worker-preset { font-weight: 600; }
+.mc-worker-cwd { opacity: 0.6; font-size: 12px; margin-left: auto; }
+.mc-dot { width: 9px; height: 9px; border-radius: 50%; background: #6b7280; }
+.mc-dot.mc-running { background: #3fb950; }
+.mc-dot.mc-detached { background: #d29922; }
+.mc-dot.mc-exited { background: #f85149; }
+.mc-error { color: #f85149; padding: 10px; font-size: 13px; }
+
+.mc-keybar { display: flex; gap: 6px; overflow-x: auto; padding: 8px; background: #0d1117; }
+.mc-key {
+  flex: 0 0 auto; min-width: 42px; min-height: 40px;
+  border: 1px solid #232a34; border-radius: 8px;
+  background: #161b22; color: #e6edf3; font-family: ui-monospace, monospace; font-size: 14px;
+}
+.mc-key:disabled { opacity: 0.4; }
+
+.mc-worker { display: flex; flex-direction: column; height: 100%; }
+.mc-worker-head { display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
+.mc-worker-id { font-family: ui-monospace, monospace; opacity: 0.7; margin: 0 auto 0 0; }
+.mc-back, .mc-refresh { background: #161b22; color: inherit; border: 0; border-radius: 8px; min-height: 40px; padding: 0 12px; }
+.mc-term {
+  flex: 1 1 auto; margin: 0; overflow: auto;
+  background: #0a0e14; padding: 10px; font-family: ui-monospace, monospace; font-size: 12px;
+  white-space: pre-wrap; word-break: break-word;
+}
+.mc-input-row { display: flex; gap: 8px; padding: 8px; background: #0d1117; }
+.mc-input-row input { flex: 1 1 auto; min-height: 44px; border-radius: 10px; border: 1px solid #232a34; background: #161b22; color: inherit; padding: 0 12px; font-size: 16px; }
+.mc-input-row button { min-height: 44px; padding: 0 16px; border: 0; border-radius: 10px; background: #2f81f7; color: #fff; font-weight: 600; }
+.mc-input-row button:disabled { opacity: 0.5; }

@@ -1,0 +1,9 @@
+out
+build
+design
+docs/design
+.vibechemy
+CLAUDE.md
+package-lock.json
+# Vendored UI styles, kept one-line-per-rule.
+*.css
