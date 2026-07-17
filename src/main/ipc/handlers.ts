@@ -98,6 +98,7 @@ export function registerIpc({
   ipcMain.handle(IPC.sessionList, (_event, projectId: string | null) =>
     sessions.list().filter((session) => (session.projectId ?? null) === (projectId ?? null))
   )
+  ipcMain.handle(IPC.sessionListAll, () => sessions.list())
   ipcMain.handle(IPC.sessionKill, async (_event, id: string) => {
     await sessions.kill(id)
     pty.detach(id)

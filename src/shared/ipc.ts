@@ -3,6 +3,7 @@ import type { Project, Preset, SessionRecord } from './types'
 export const IPC = {
   sessionSpawn: 'session:spawn',
   sessionList: 'session:list',
+  sessionListAll: 'session:list-all', // ALL projects' sessions (session:list with null = Scratch, NOT all)
   sessionKill: 'session:kill',
   sessionRevive: 'session:revive',
   orchestratorsClosed: 'orchestrator:closed',

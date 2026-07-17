@@ -12,6 +12,7 @@ const api = {
   spawnSession: (presetId: string, projectId: string | null, isolate = false, cwd?: string): Promise<SessionRecord> =>
     ipcRenderer.invoke(IPC.sessionSpawn, { presetId, projectId, isolate, cwd }),
   listSessions: (projectId: string | null): Promise<SessionRecord[]> => ipcRenderer.invoke(IPC.sessionList, projectId),
+  listAllSessions: (): Promise<SessionRecord[]> => ipcRenderer.invoke(IPC.sessionListAll),
   killSession: (id: string): Promise<void> => ipcRenderer.invoke(IPC.sessionKill, id),
   reviveSession: (id: string): Promise<{ ok: boolean; message?: string; newId?: string }> =>
     ipcRenderer.invoke(IPC.sessionRevive, id),

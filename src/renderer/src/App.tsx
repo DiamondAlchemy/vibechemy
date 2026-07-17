@@ -15,7 +15,8 @@ import { usePaneView, readLS } from './usePaneView'
 import { useCockpitBackground, bgFileUrl } from './useCanvasDecor'
 import { useBackgroundMotion } from './useBackgroundMotion'
 import { useNow } from './hooks/useNow'
-import type { Preset, SessionRecord } from '@shared/types'
+import type { Preset, Project, SessionRecord } from '@shared/types'
+import { groupWorkersElsewhere } from '@shared/sessions/workersElsewhere'
 import { LEGACY_PERSONAL_AGENT_IDS, PERSONAL_AGENT_PRESET_ID } from '@shared/agents/personalAgent'
 function fmtTime(d: Date): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
@@ -32,6 +33,12 @@ function App(): React.JSX.Element {
   const { backgroundMotion, setBackgroundMotion } = useBackgroundMotion()
   const [projectName, setProjectName] = useState('Scratch')
   const [presets, setPresets] = useState<Preset[]>([])
+  // Cross-workspace worker visibility: running WORKER sessions that live in OTHER workspaces
+  // would otherwise be invisible from the current cockpit. These two feed a passive
+  // "N running in <workspace>" chip in the titlebar — read-only, fed by the session list-all
+  // and project-list IPC.
+  const [allSessions, setAllSessions] = useState<SessionRecord[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
   // Workers explicitly promoted into the dock. Persisted so a restart/deploy no longer silently
   // demotes them back to the grid (stale ids for gone sessions are inert — the orchestrator filter
   // only matches live sessions).
@@ -142,6 +149,38 @@ function App(): React.JSX.Element {
     }
   }, [refresh, forget])
 
+  // Keep the cross-workspace snapshot fresh: pull on the same session-change signals the app
+  // already reacts to, plus a light poll (a change in another workspace can emit no event here).
+  useEffect(() => {
+    let alive = true
+    const pull = (): void => {
+      void api
+        .listAllSessions()
+        .then((s) => {
+          if (alive) setAllSessions(s)
+        })
+        .catch(() => {})
+      void api
+        .listProjects()
+        .then((p) => {
+          if (alive) setProjects(p)
+        })
+        .catch(() => {})
+    }
+    pull()
+    const offExit = api.onExit(() => pull())
+    const offChanged = api.onMcEvent((e) => {
+      if (e.kind === 'sessions') pull()
+    })
+    const h = setInterval(pull, 6000)
+    return () => {
+      alive = false
+      offExit()
+      offChanged()
+      clearInterval(h)
+    }
+  }, [])
+
   const latestProjectId = useRef<string | null>(null)
   const selectProject = useCallback(async (id: string | null, name: string) => {
     latestProjectId.current = id
@@ -192,6 +231,14 @@ function App(): React.JSX.Element {
   const orchestrators = sessions.filter((s) => orchPresetIds.has(s.presetId) || leadIds.includes(s.id))
   const activeOrch = orchestrators.find((s) => s.id === activeOrchId) ?? orchestrators[orchestrators.length - 1] ?? null
   const workers = sessions.filter((s) => !orchestrators.some((o) => o.id === s.id))
+  // Running workers in OTHER workspaces, grouped for the passive header chip. Gated on presets
+  // being loaded — an empty orchPresetIds would misclassify preset-based leads as workers
+  // during the first renders (the async-presets race).
+  const workersElsewhere = useMemo(() => {
+    if (presets.length === 0) return []
+    const projectNames = new Map(projects.map((p) => [p.id, p.name]))
+    return groupWorkersElsewhere(allSessions, { currentProjectId, orchPresetIds, leadIds, projectNames })
+  }, [presets.length, projects, allSessions, currentProjectId, orchPresetIds, leadIds])
   // Tombstones partition like live sessions (orchestrator presets → dock, rest → grid),
   // scoped to the current project so a workspace switch doesn't drag them along.
   const projectTombstones = tombstones.filter((t) => (t.session.projectId ?? null) === (currentProjectId ?? null))
@@ -365,6 +412,21 @@ function App(): React.JSX.Element {
         </div>
 
         <div className="right">
+          {workersElsewhere.length > 0 && (
+            <div className="workers-elsewhere">
+              {workersElsewhere.map((g) => (
+                <button
+                  key={g.projectId ?? '__scratch__'}
+                  className="worker-elsewhere-chip"
+                  title={`${g.count} terminal${g.count === 1 ? '' : 's'} running in ${g.label} — switch to it`}
+                  onClick={() => void selectProject(g.projectId, g.label)}
+                >
+                  <span className="worker-elsewhere-dot" />
+                  <b>{g.count}</b> in {g.label}
+                </button>
+              ))}
+            </div>
+          )}
           <LayoutPicker n={shownWorkers.length} selected={selectedLayout} onSelect={setSelectedLayout} />
           <button
             data-sessions-toggle

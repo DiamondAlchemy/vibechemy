@@ -424,6 +424,22 @@ input { outline: none; font-family: var(--sans); }
 .sessions-stat .stat-caret { opacity: 0.55; margin-left: 1px; transition: transform 0.14s ease; }
 .sessions-stat.on .stat-caret { transform: rotate(180deg); }
 .hidden-pill { font-size: 9px; letter-spacing: 0.5px; color: var(--accent); border: 1px solid rgba(127, 227, 255, 0.35); border-radius: 5px; padding: 0 5px; }
+/* Cross-workspace worker chips: passive "N in <workspace>" pills in the titlebar so running
+   workers in other workspaces are never invisible. Click jumps there. Mirrors the .hidden-pill
+   accent-pill look; -webkit-app-region no-drag comes from the .titlebar button rule so the
+   chips stay clickable over the drag region. */
+.workers-elsewhere { display: flex; align-items: center; gap: 6px; }
+.worker-elsewhere-chip {
+  display: flex; align-items: center; gap: 5px;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.3px; color: var(--text-dim);
+  padding: 2px 8px; border-radius: 7px;
+  border: 1px solid rgba(127, 227, 255, 0.28);
+  background: rgba(127, 227, 255, 0.04);
+  cursor: pointer; transition: all 0.14s ease;
+}
+.worker-elsewhere-chip:hover { color: var(--text); border-color: rgba(127, 227, 255, 0.5); background: rgba(127, 227, 255, 0.09); }
+.worker-elsewhere-chip b { color: var(--green); font-weight: 600; text-shadow: var(--glow-green); }
+.worker-elsewhere-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: var(--glow-green); }
 .layout-pick { position: relative; -webkit-app-region: no-drag; }
 .layout-btn { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.5px; color: var(--text-dim); background: rgba(255, 255, 255, 0.018); border: 1px solid var(--hairline-2); border-radius: 7px; padding: 4px 9px; cursor: pointer; transition: all 0.13s ease; }
 .layout-btn:hover { color: var(--text); border-color: rgba(127, 227, 255, 0.25); }
