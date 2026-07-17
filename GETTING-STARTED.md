@@ -69,6 +69,9 @@ npm ci
 `npm ci` compiles the Electron-native `better-sqlite3` and `node-pty` modules. The Xcode tools and
 Python requirement above are what make that build possible.
 
+The first install downloads Electron and compiles those native modules — expect it to take
+**10–20 minutes** depending on your connection, mostly in silence. That is normal; it is not hung.
+
 Start Vibechemy in development mode:
 
 ```bash
