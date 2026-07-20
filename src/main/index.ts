@@ -15,6 +15,7 @@ import { resolveIdentity } from './boot/identity'
 import { repairPath } from './boot/pathRepair'
 import { ControlEventHub } from './control/ControlEventHub'
 import { ControlPlane } from './control/ControlPlane'
+import { ContextProvider } from './context/ContextProvider'
 import { openDatabase } from './db/database'
 import { EventBus } from './events/EventBus'
 import { MergeService } from './git/MergeService'
@@ -261,7 +262,8 @@ app.whenReady().then(async () => {
   }
   reloadProfiles()
 
-  const sessions = new SessionManager(db, presets, undefined, undefined, undefined, undefined, activity)
+  const context = new ContextProvider(undefined, standards, settings)
+  const sessions = new SessionManager(db, presets, undefined, context, undefined, undefined, activity)
   const notifyExit = (id: string): void => {
     const expected = sessions.wasDeliberate(id)
     const row = sessions.rowById(id)

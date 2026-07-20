@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { MemoryStore } from './MemoryStore'
 import { ContextProvider } from '../context/ContextProvider'
 import { BLOCK_BEGIN } from './projection'
+import { pinSettingKey } from '@shared/pin'
 
 const git = (cwd: string, ...args: string[]): string => execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8' })
 const excludeOf = (repoDir: string): string => {
@@ -36,6 +37,20 @@ describe('ContextProvider projection (integration)', () => {
     expect(agents).toContain(BLOCK_BEGIN)
     expect(agents).toContain('demo') // indexer pulled package.json/README
     expect(existsSync(join(globalDir, 'GLOBAL.md'))).toBe(true) // global created in injected dir, not real home
+  })
+
+  it('projects the workspace pin as the first line for a newly spawned agent', async () => {
+    const settings = {
+      get: (key: string): string | null => (key === pinSettingKey('proj-1') ? '  nobody touch\nauth.ts today  ' : null)
+    }
+    provider = new ContextProvider(new MemoryStore(globalDir), undefined, settings)
+
+    await provider.prepare('codex', projectRoot, 'proj-1')
+
+    const agents = readFileSync(join(projectRoot, 'AGENTS.md'), 'utf8')
+    const pinAt = agents.indexOf('PINNED: nobody touch auth.ts today')
+    expect(pinAt).toBeGreaterThan(agents.indexOf(BLOCK_BEGIN))
+    expect(pinAt).toBeLessThan(agents.indexOf('# Vibechemy — shared context'))
   })
 
   it('is a no-op for Scratch (no projectId) and for shells', async () => {

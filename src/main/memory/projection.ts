@@ -41,13 +41,16 @@ export function stripManagedBlock(content: string): string {
  *  present, is ALWAYS included so every agent inherits what others discovered. */
 export function buildBrief(opts: {
   projectName: string
+  pin?: string
   global: string
   project: string
   learnings?: string
   standards?: string
   includeProject?: boolean
 }): string {
-  const parts: string[] = [`# Vibechemy — shared context for "${opts.projectName}"`]
+  const parts: string[] = []
+  if (opts.pin && opts.pin.trim()) parts.push(opts.pin.trim())
+  parts.push(`# Vibechemy — shared context for "${opts.projectName}"`)
   if (opts.global.trim()) parts.push(`## About me / my stack\n\n${opts.global.trim()}`)
   if (opts.includeProject !== false && opts.project.trim()) parts.push(`## This project\n\n${opts.project.trim()}`)
   // Coding standards are normative ("write code this way"), so they sit above the advisory learnings.

@@ -29,6 +29,8 @@ import { capturePane, hasSession, sendKeys, sendKeysNoEnter, cancelCopyMode } fr
 import type { SettingsStore } from '../settings/SettingsStore'
 import type { UsageService } from '../usage/UsageService'
 import type { AsrProvider } from '../voice/AsrProvider'
+import { planPinDeliveries } from '../pin/delivery'
+import { normalizePin, pinProjectId } from '@shared/pin'
 
 function expandHome(path: string): string {
   const trimmed = path.trim()
@@ -268,7 +270,17 @@ export function registerIpc({
     }
   }
   control.installSettingsWriter(writeSetting)
-  ipcMain.handle(IPC.settingsSet, (_event, { key, value }: { key: string; value: string }) => writeSetting(key, value))
+  ipcMain.handle(IPC.settingsSet, async (_event, { key, value }: { key: string; value: string }) => {
+    const projectId = pinProjectId(key)
+    const previousPin = projectId ? settings.get(key) : null
+    const nextValue = projectId ? normalizePin(value) : value
+    writeSetting(key, nextValue)
+
+    if (projectId) {
+      const deliveries = planPinDeliveries(sessions.list(), projectId, previousPin, nextValue)
+      await Promise.all(deliveries.map((delivery) => sendKeys(delivery.tmuxName, delivery.text).catch(() => {})))
+    }
+  })
 
   ipcMain.handle(IPC.presetList, () => presets.list())
   ipcMain.handle(IPC.projectList, () => projects.listProjects())

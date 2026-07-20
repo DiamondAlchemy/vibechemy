@@ -10,6 +10,7 @@ import { SessionsPanel } from './components/SessionsPanel'
 import { LayoutPicker } from './components/LayoutPicker'
 import { ActivityStrip } from './components/ActivityStrip'
 import { Settings } from './components/Settings'
+import { PinLine } from './components/PinLine'
 import { layoutsFor } from './layouts'
 import { usePaneView, readLS } from './usePaneView'
 import { useCockpitBackground, bgFileUrl } from './useCanvasDecor'
@@ -603,6 +604,12 @@ function App(): React.JSX.Element {
           <span className="status-item">
             <b>{projectName}</b>
           </span>
+          {currentProjectId && (
+            <>
+              <span className="vsep" />
+              <PinLine key={currentProjectId} projectId={currentProjectId} />
+            </>
+          )}
         </div>
         <div className="status-right">
           <span className="status-item">

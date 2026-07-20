@@ -4,6 +4,11 @@ import { MemoryStore } from '../memory/MemoryStore'
 import { nativeFileName, mergeManagedBlock, buildBrief } from '../memory/projection'
 import type { StandardsStore } from '../standards/StandardsStore'
 import { ensureExcluded } from '../git/localExclude'
+import { pinContextLine, pinSettingKey } from '@shared/pin'
+
+interface SettingsReader {
+  get(key: string): string | null
+}
 
 // Directories that are always Vibechemy's own — never the project's app code — kept out
 // of git so an agent's `git add -A` can't sweep them into the repo's history (and on to prod):
@@ -28,7 +33,8 @@ export class ContextProvider {
     private memory: MemoryStore = new MemoryStore(),
     // The curated coding-standards layer — injected into every worker's brief (optional so the
     // existing file-only ContextProvider tests keep working without a DB).
-    private standards?: StandardsStore
+    private standards?: StandardsStore,
+    private settings?: SettingsReader
   ) {}
 
   async prepare(
@@ -45,6 +51,7 @@ export class ContextProvider {
     const global = this.memory.readGlobal()
     const project = this.memory.readProject(projectRoot)
     const learnings = this.memory.readLearnings(projectRoot)
+    const pin = pinContextLine(this.settings?.get(pinSettingKey(projectId)))
     // The curated coding standards (globals + this project's), rule-first — injected so every
     // worker, on every model, writes code the same way. Empty when there's no standards store/rules.
     const standards = this.standards?.renderForProject(projectId) ?? ''
@@ -52,6 +59,7 @@ export class ContextProvider {
     const includeProject = !seededFrom || seededFrom.toLowerCase() !== file.toLowerCase()
     const body = buildBrief({
       projectName: basename(projectRoot) || 'project',
+      pin,
       global,
       project,
       learnings,

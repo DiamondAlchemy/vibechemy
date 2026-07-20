@@ -1013,12 +1013,29 @@ input { outline: none; font-family: var(--sans); }
   font-family: var(--mono); font-size: 10.5px; color: var(--text-dim);
 }
 .status-left, .status-right { display: flex; align-items: center; gap: 14px; }
+.status-left { flex: 1 1 auto; min-width: 0; }
+.status-right { flex: 0 0 auto; }
 .status-item { display: flex; align-items: center; gap: 6px; }
 .ready-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 7px rgba(93, 255, 176, 0.85); }
 .status-item b { color: var(--text); font-weight: 500; }
 .status-item .branch { color: var(--accent); }
 .status-right .time { color: var(--text-faint); }
 .vsep { width: 1px; height: 13px; background: var(--hairline); }
+.pin-line {
+  flex: 1 1 420px; min-width: 120px; max-width: 540px;
+  display: flex; align-items: center; gap: 7px;
+  color: var(--amber); letter-spacing: 0.08em;
+}
+.pin-line input {
+  width: 100%; min-width: 0; padding: 2px 5px;
+  border: 1px solid transparent; border-radius: 4px;
+  background: rgba(0, 0, 0, 0.16); color: var(--text);
+  font-family: var(--mono); font-size: 10.5px;
+}
+.pin-line input::placeholder { color: var(--text-faint); }
+.pin-line input:focus { border-color: rgba(255, 194, 75, 0.35); background: rgba(0, 0, 0, 0.32); }
+.pin-line[data-state="saving"] input { color: var(--text-dim); }
+.pin-line[data-state="error"] input { border-color: rgba(255, 122, 133, 0.55); }
 
 /* ---- Review & merge panel ---- */
 .review { display: flex; flex-direction: column; height: 100%; min-height: 0; }
