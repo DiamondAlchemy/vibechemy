@@ -28,6 +28,7 @@ export const IPC = {
   dialogPickFolder: 'dialog:pick-folder',
   dialogPickImage: 'dialog:pick-image',
   sessionDiff: 'session:diff',
+  sessionPrecheck: 'session:precheck',
   sessionMerge: 'session:merge',
   sessionDiscard: 'session:discard',
   worktreeLeftovers: 'worktree:leftovers',
@@ -67,6 +68,13 @@ export interface DiffResult {
   diff: string
   files: number
   message?: string
+}
+
+export interface PrecheckResult {
+  configured: boolean
+  command?: string
+  exitCode: number | null
+  output: string
 }
 
 export interface MergeResult {

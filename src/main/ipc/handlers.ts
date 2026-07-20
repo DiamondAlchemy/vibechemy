@@ -184,6 +184,7 @@ export function registerIpc({
   )
 
   ipcMain.handle(IPC.sessionDiff, (_event, id: string) => merge.diff(id))
+  ipcMain.handle(IPC.sessionPrecheck, (_event, id: string) => control.runCheck(id))
   ipcMain.handle(IPC.sessionMerge, async (_event, id: string) => {
     const result = await merge.merge(id)
     if (result.ok) notifyExit(id)

@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../api'
 import type { SessionRecord } from '@shared/types'
 import { GuardedButton } from './GuardedButton'
+import { beginPrecheck, completePrecheck, formatPrecheck, precheckTone, type PrecheckCache } from '../reviewPrecheck'
 
 const PRESET_COLOR: Record<string, string> = {
   'claude-opus': 'amber',
@@ -35,6 +36,8 @@ export function ReviewPanel({
   const [files, setFiles] = useState(0)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
+  const [prechecks, setPrechecks] = useState<PrecheckCache>({})
+  const requestedPrechecks = useRef(new Set<string>())
 
   const reload = useCallback(() => {
     api.listSessions(projectId).then((all) => setWorkers(all.filter((s) => s.branch)))
@@ -50,6 +53,24 @@ export function ReviewPanel({
     })
     return off
   }, [reload])
+
+  useEffect(() => {
+    if (!selected || requestedPrechecks.current.has(selected)) return
+    requestedPrechecks.current.add(selected)
+    setPrechecks((cache) => beginPrecheck(cache, selected))
+    void api
+      .sessionPrecheck(selected)
+      .then((result) => setPrechecks((cache) => completePrecheck(cache, selected, result)))
+      .catch((error) =>
+        setPrechecks((cache) =>
+          completePrecheck(cache, selected, {
+            configured: true,
+            exitCode: 1,
+            output: error instanceof Error ? error.message : String(error)
+          })
+        )
+      )
+  }, [selected])
 
   const select = async (id: string): Promise<void> => {
     setSelected(id)
@@ -141,6 +162,9 @@ export function ReviewPanel({
               confirmLabel="Confirm discard?"
               onConfirm={() => void discard(selected)}
             />
+          </div>
+          <div className={`review-check ${precheckTone(prechecks[selected] ?? { phase: 'running' })}`}>
+            {formatPrecheck(prechecks[selected] ?? { phase: 'running' })}
           </div>
           {msg && <div className="review-msg">{msg}</div>}
           <div className="review-diff">

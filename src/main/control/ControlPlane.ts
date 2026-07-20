@@ -22,6 +22,8 @@ import { capturePane, sendKeys } from '../sessions/tmux'
 import type { SettingsStore } from '../settings/SettingsStore'
 import type { StandardsStore } from '../standards/StandardsStore'
 import { ControlEventHub, type AwaitOptions, type AwaitResult, type ControlEventInput } from './ControlEventHub'
+import { runWorkspacePrecheck } from './precheck'
+import type { PrecheckResult } from '@shared/ipc'
 
 export interface WorkerInfo {
   workerId: string
@@ -315,6 +317,15 @@ export class ControlPlane {
 
   getDiff(workerId: string): Promise<DiffResult> {
     return this.mergeSvc.diff(workerId)
+  }
+
+  runCheck(workerId: string): Promise<PrecheckResult> {
+    const worker = this.sessions.get(workerId)
+    if (!worker) {
+      return Promise.resolve({ configured: true, exitCode: 1, output: `unknown worker: ${workerId}` })
+    }
+    const workspaceRoot = worker.originRoot ?? this.projects.getProject(worker.projectId ?? '')?.rootPath ?? worker.cwd
+    return runWorkspacePrecheck(worker.cwd, workspaceRoot)
   }
 
   async readOutput(workerId: string, lines = 200): Promise<{ ok: boolean; output: string; message?: string }> {

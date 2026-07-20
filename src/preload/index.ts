@@ -1,7 +1,14 @@
 import { clipboard, contextBridge, ipcRenderer, webUtils } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import { IPC } from '@shared/ipc'
-import type { DiffResult, MergeResult, SessionDataMsg, SessionExitEvent, VoiceStatus } from '@shared/ipc'
+import type {
+  DiffResult,
+  MergeResult,
+  PrecheckResult,
+  SessionDataMsg,
+  SessionExitEvent,
+  VoiceStatus
+} from '@shared/ipc'
 import type { McEvent } from '@shared/events'
 import type { AgentStatus } from '@shared/agents/catalog'
 import type { ActivityEvent, Preset, Project, SessionRecord, UsageReport, WorktreeEntry } from '@shared/types'
@@ -61,6 +68,7 @@ const api = {
   pathForFile: (file: File): string => webUtils.getPathForFile(file),
   clipboardWriteText: (text: string): void => clipboard.writeText(text),
   sessionDiff: (id: string): Promise<DiffResult> => ipcRenderer.invoke(IPC.sessionDiff, id),
+  sessionPrecheck: (id: string): Promise<PrecheckResult> => ipcRenderer.invoke(IPC.sessionPrecheck, id),
   sessionMerge: (id: string): Promise<MergeResult> => ipcRenderer.invoke(IPC.sessionMerge, id),
   sessionDiscard: (id: string): Promise<MergeResult> => ipcRenderer.invoke(IPC.sessionDiscard, id),
   listLeftovers: (projectId: string | null): Promise<SessionRecord[]> =>
