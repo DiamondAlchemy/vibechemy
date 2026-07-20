@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react'
 import type { Preset, SessionRecord } from '@shared/types'
 import { LEGACY_PERSONAL_AGENT_IDS, PERSONAL_AGENT_PRESET_ID } from '@shared/agents/personalAgent'
+import { GuardedButton } from './GuardedButton'
 
 /**
  * The Sessions popover (title-bar ⊞ button): see every worker terminal in the workspace —
@@ -113,27 +114,20 @@ export function SessionsPanel({
                 {s.branch && <span className="sess-branch">{s.branch}</span>}
               </div>
               <div className="sess-actions">
-                <button
+                <GuardedButton
                   className="sess-btn show"
                   title="Merge this branch into the project, then remove the worktree"
-                  onClick={() => onMerge(s.id)}
-                >
-                  Merge
-                </button>
-                <button
+                  label="Merge"
+                  confirmLabel="Confirm merge?"
+                  onConfirm={() => onMerge(s.id)}
+                />
+                <GuardedButton
                   className="sess-btn end"
                   title="Delete the worktree + branch (discard this work)"
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        `Discard ${label(s)}${s.branch ? ` (${s.branch})` : ''}?\n\nThis permanently deletes its worktree and branch, including any uncommitted work. This can't be undone.`
-                      )
-                    )
-                      onDiscard(s.id)
-                  }}
-                >
-                  Discard
-                </button>
+                  label="Discard"
+                  confirmLabel="Confirm discard?"
+                  onConfirm={() => onDiscard(s.id)}
+                />
               </div>
             </div>
           ))}

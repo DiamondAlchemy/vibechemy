@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { api } from '../api'
 import type { SessionRecord } from '@shared/types'
+import { GuardedButton } from './GuardedButton'
 
 const PRESET_COLOR: Record<string, string> = {
   'claude-opus': 'amber',
@@ -124,12 +125,22 @@ export function ReviewPanel({
             <span className="review-files">
               {files} file{files === 1 ? '' : 's'} changed
             </span>
-            <button className="run-btn" disabled={busy} onClick={() => void merge(selected)}>
-              Merge
-            </button>
-            <button className="chip" disabled={busy} onClick={() => void discard(selected)}>
-              Discard
-            </button>
+            <GuardedButton
+              key={`merge-${selected}`}
+              className="run-btn"
+              disabled={busy}
+              label="Merge"
+              confirmLabel="Confirm merge?"
+              onConfirm={() => void merge(selected)}
+            />
+            <GuardedButton
+              key={`discard-${selected}`}
+              className="chip"
+              disabled={busy}
+              label="Discard"
+              confirmLabel="Confirm discard?"
+              onConfirm={() => void discard(selected)}
+            />
           </div>
           {msg && <div className="review-msg">{msg}</div>}
           <div className="review-diff">

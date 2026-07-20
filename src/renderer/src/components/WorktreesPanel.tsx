@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { api } from '../api'
 import type { WorktreeEntry } from '@shared/types'
+import { GuardedButton } from './GuardedButton'
 
 function classifyWorktree(entry: WorktreeEntry): { label: string; removable: boolean; requiresConfirm: boolean } {
   if (entry.inUse) return { label: 'in use', removable: false, requiresConfirm: false }
@@ -34,7 +35,6 @@ function groupByProject(entries: WorktreeEntry[]): Array<{
 export function WorktreesPanel({ onClose }: { onClose: () => void; projectId?: string | null }): React.JSX.Element {
   const [entries, setEntries] = useState<WorktreeEntry[] | null>(null)
   const [busy, setBusy] = useState<string | null>(null) // path currently being removed
-  const [confirm, setConfirm] = useState<string | null>(null) // dirty path awaiting a second click
   const [msg, setMsg] = useState('')
 
   const load = useCallback(() => {
@@ -42,7 +42,6 @@ export function WorktreesPanel({ onClose }: { onClose: () => void; projectId?: s
   }, [])
   useEffect(() => load(), [load])
   const refresh = useCallback(() => {
-    setConfirm(null)
     load()
   }, [load])
 
@@ -52,17 +51,7 @@ export function WorktreesPanel({ onClose }: { onClose: () => void; projectId?: s
     const r = await api.removeWorktree(e.path, force)
     setMsg(r.message)
     setBusy(null)
-    setConfirm(null)
     refresh()
-  }
-
-  const onRemoveClick = (e: WorktreeEntry): void => {
-    const { requiresConfirm } = classifyWorktree(e)
-    if (requiresConfirm && confirm !== e.path) {
-      setConfirm(e.path) // arm: next click discards
-      return
-    }
-    void remove(e, requiresConfirm) // force only when discarding a dirty worktree
   }
 
   const groups = entries ? groupByProject(entries) : []
@@ -94,7 +83,6 @@ export function WorktreesPanel({ onClose }: { onClose: () => void; projectId?: s
               </div>
               {g.entries.map((e) => {
                 const c = classifyWorktree(e)
-                const armed = confirm === e.path
                 const statusClass = e.inUse ? 'inuse' : e.dirty ? 'dirty' : ''
                 return (
                   <div key={e.path} className="wt-row">
@@ -106,14 +94,16 @@ export function WorktreesPanel({ onClose }: { onClose: () => void; projectId?: s
                         {e.inUse && e.sessionTitle ? `in use — ${e.sessionTitle}` : c.label}
                       </span>
                     </div>
-                    <button
+                    <GuardedButton
+                      key={String(c.requiresConfirm)}
                       className="wt-rm"
                       disabled={!c.removable || busy === e.path}
                       title={c.removable ? 'Remove this worktree and its branch' : c.label}
-                      onClick={() => onRemoveClick(e)}
-                    >
-                      {busy === e.path ? '…' : armed ? 'Discard?' : 'Remove'}
-                    </button>
+                      label={busy === e.path ? '…' : 'Remove'}
+                      confirmLabel="Discard?"
+                      requiresConfirmation={c.requiresConfirm}
+                      onConfirm={() => void remove(e, c.requiresConfirm)}
+                    />
                   </div>
                 )
               })}
