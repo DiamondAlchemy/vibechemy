@@ -93,6 +93,8 @@ export interface SessionRecord {
   task?: string | null // current task ("what am I doing") — seeded from spawn, updatable via set_task
   owner?: string | null // orchestrator preset id that owns this worker (for owner grouping)
   taskState?: TaskState | null // self-reported work state, distinct from the process `status`
+  lastOutput?: string | null // bounded final terminal tail from an unexpected exit
+  lastExitCode?: number | null // pty attach-client exit code accompanying that tail
 }
 
 export interface WorktreeEntry {

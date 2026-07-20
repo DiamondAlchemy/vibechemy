@@ -142,6 +142,8 @@ function App(): React.JSX.Element {
             type: 'exited',
             session: rec,
             at: Date.now(),
+            lastOutput: ev.lastOutput,
+            exitCode: ev.exitCode,
             missingCli: false
           })
       }

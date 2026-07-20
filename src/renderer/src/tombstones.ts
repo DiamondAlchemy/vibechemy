@@ -6,12 +6,21 @@ export interface Tombstone {
   exitedAt: number
   reviving: boolean
   error: string | null
+  lastOutput: string | null
+  exitCode: number | null
   /** The preset's CLI isn't installed on this machine — revive is pointless; point at Settings → Agents. */
   missingCli?: boolean
 }
 
 export type TombstoneAction =
-  | { type: 'exited'; session: SessionRecord; at: number; missingCli?: boolean }
+  | {
+      type: 'exited'
+      session: SessionRecord
+      at: number
+      lastOutput?: string | null
+      exitCode?: number | null
+      missingCli?: boolean
+    }
   | { type: 'dismiss'; id: string }
   | { type: 'reviveStart'; id: string }
   | { type: 'reviveOk'; id: string }
@@ -20,7 +29,17 @@ export type TombstoneAction =
 export function tombstonesReducer(state: Tombstone[], action: TombstoneAction): Tombstone[] {
   switch (action.type) {
     case 'exited':
-      if (state.some((t) => t.session.id === action.session.id)) return state
+      if (state.some((t) => t.session.id === action.session.id)) {
+        return state.map((t) =>
+          t.session.id === action.session.id
+            ? {
+                ...t,
+                lastOutput: action.lastOutput ?? t.lastOutput,
+                exitCode: action.exitCode ?? t.exitCode
+              }
+            : t
+        )
+      }
       return [
         ...state,
         {
@@ -28,6 +47,8 @@ export function tombstonesReducer(state: Tombstone[], action: TombstoneAction): 
           exitedAt: action.at,
           reviving: false,
           error: null,
+          lastOutput: action.lastOutput ?? null,
+          exitCode: action.exitCode ?? null,
           missingCli: action.missingCli
         }
       ]

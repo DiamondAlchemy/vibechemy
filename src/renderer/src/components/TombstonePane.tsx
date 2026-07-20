@@ -23,6 +23,8 @@ export function TombstonePane({
   const at = new Date(t.exitedAt)
   const hh = String(at.getHours()).padStart(2, '0')
   const mm = String(at.getMinutes()).padStart(2, '0')
+  const hasBlackbox = !!t.lastOutput || t.exitCode !== null
+  const exitLabel = t.exitCode === null ? 'EXIT CODE UNAVAILABLE' : `EXIT CODE ${t.exitCode}`
   return (
     <div className={`tombstone${compact ? ' compact' : ''}`}>
       <div className="tombstone-head">
@@ -41,6 +43,18 @@ export function TombstonePane({
         ) : (
           !compact && <div className="tombstone-hint">CLI exited — the conversation is recoverable.</div>
         )}
+        {hasBlackbox &&
+          (compact ? (
+            <details className="tombstone-compact-blackbox">
+              <summary>Last output · {exitLabel.toLowerCase()}</summary>
+              <pre className="tombstone-output">{t.lastOutput || 'No terminal output captured.'}</pre>
+            </details>
+          ) : (
+            <div className="tombstone-blackbox">
+              <div className="tombstone-meta">LAST OUTPUT · {exitLabel}</div>
+              <pre className="tombstone-output">{t.lastOutput || 'No terminal output captured.'}</pre>
+            </div>
+          ))}
         {t.error && <div className="tombstone-error">{t.error}</div>}
         <div className="tombstone-actions">
           {!t.missingCli && (

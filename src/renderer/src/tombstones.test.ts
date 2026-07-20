@@ -28,6 +28,18 @@ describe('tombstonesReducer', () => {
     expect(s).toHaveLength(1)
     expect(s[0]).toMatchObject({ exitedAt: 10, reviving: false, error: null })
   })
+  it('carries the final output metadata and lets a duplicate exit fill a missing snapshot', () => {
+    let s = tombstonesReducer([], { type: 'exited', session: rec('a'), at: 10 })
+    s = tombstonesReducer(s, {
+      type: 'exited',
+      session: rec('a'),
+      at: 11,
+      lastOutput: 'final words',
+      exitCode: 17
+    })
+    expect(s).toHaveLength(1)
+    expect(s[0]).toMatchObject({ exitedAt: 10, lastOutput: 'final words', exitCode: 17 })
+  })
   it('dismiss removes; unknown ids are no-ops', () => {
     const s = tombstonesReducer([], { type: 'exited', session: rec('a'), at: 1 })
     expect(tombstonesReducer(s, { type: 'dismiss', id: 'a' })).toHaveLength(0)

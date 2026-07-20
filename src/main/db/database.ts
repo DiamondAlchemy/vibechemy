@@ -56,5 +56,7 @@ export function openDatabase(file: string): DB {
   ensureColumn(db, 'sessions', 'owner', 'TEXT')
   ensureColumn(db, 'sessions', 'task_state', 'TEXT')
   ensureColumn(db, 'sessions', 'callsign', 'TEXT')
+  ensureColumn(db, 'sessions', 'last_output', 'TEXT')
+  ensureColumn(db, 'sessions', 'last_exit_code', 'INTEGER')
   return db
 }

@@ -20,6 +20,8 @@ import {
 import { SettingsStore } from '../settings/SettingsStore'
 import { ActivityLog } from '../activity/ActivityLog'
 import { PRODUCT_IDENTITY } from '@shared/product'
+import { boundLastOutput, LAST_OUTPUT_MAX_LINES } from './blackbox'
+import type { PtyExitSnapshot } from './PtyBridge'
 
 export type TmuxApi = typeof tmuxDefault
 
@@ -220,7 +222,7 @@ export class SessionManager {
   private allRows(): SessionRecord[] {
     return this.db
       .prepare(
-        'SELECT id,project_id as projectId,preset_id as presetId,tmux_name as tmuxName,cwd,title,callsign,status,created_at as createdAt,last_seen_at as lastSeenAt,branch,origin_root as originRoot,task,owner,task_state as taskState FROM sessions'
+        'SELECT id,project_id as projectId,preset_id as presetId,tmux_name as tmuxName,cwd,title,callsign,status,created_at as createdAt,last_seen_at as lastSeenAt,branch,origin_root as originRoot,task,owner,task_state as taskState,last_output as lastOutput,last_exit_code as lastExitCode FROM sessions'
       )
       .all() as SessionRecord[]
   }
@@ -451,11 +453,23 @@ export class SessionManager {
    *  running→exited (i.e. the session really died) — a plain viewer detach leaves tmux alive and
    *  returns false, so callers can avoid firing a spurious exit/tombstone event for a live session;
    *  tab/layout-switch detaches must not tombstone still-running panes. */
-  async markExitedIfGone(id: string): Promise<boolean> {
+  async markExitedIfGone(id: string, exit?: PtyExitSnapshot): Promise<boolean> {
     const row = this.allRows().find((r) => r.id === id)
     if (!row || row.status === 'exited') return false
+    // Try capture-pane while tmux may still be finishing teardown. If it already disappeared, the
+    // PtyBridge fallback is the bounded stream that was actually rendered. Deliberate closes never
+    // retain a black box.
+    const unexpected = !!exit && !this.deliberateEnds.has(id)
+    const captured = unexpected ? await this.tmux.capturePane(row.tmuxName, LAST_OUTPUT_MAX_LINES).catch(() => '') : ''
     if (await this.tmux.hasSession(row.tmuxName)) return false // still alive — a detach, not a death
-    this.setStatus(id, 'exited')
+    if (unexpected) {
+      const lastOutput = boundLastOutput(captured.trim() ? captured : exit.output)
+      this.db
+        .prepare('UPDATE sessions SET status=?, last_seen_at=?, last_output=?, last_exit_code=? WHERE id=?')
+        .run('exited', this.now(), lastOutput || null, exit.exitCode, id)
+    } else {
+      this.setStatus(id, 'exited')
+    }
     return true
   }
 

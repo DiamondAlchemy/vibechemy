@@ -1,9 +1,14 @@
 import * as pty from 'node-pty'
 import { tmuxSocket, hasSession as tmuxHasSession } from './tmux'
 import { shouldReattach, HEAL_MAX_ATTEMPTS, HEAL_BACKOFF_MS, HEAL_WINDOW_MS } from '@shared/sessions/reattach'
+import { appendRenderedTail, boundLastOutput } from './blackbox'
 
 type DataCb = (sessionId: string, data: string, viewerId: string) => void
-type ExitCb = (sessionId: string) => void
+export interface PtyExitSnapshot {
+  exitCode: number
+  output: string
+}
+type ExitCb = (sessionId: string, snapshot: PtyExitSnapshot) => void
 
 interface ClientRecord {
   client: pty.IPty
@@ -20,6 +25,10 @@ export class PtyBridge {
   // Attach geometry kept per session so a self-heal re-attach (see handleClientExit) can reconnect
   // with the same size the renderer last asked for, without a round-trip to the renderer.
   private attachInfo = new Map<string, { tmuxName: string; cols: number; rows: number; viewerId: string }>()
+  // Bounded copy of output already sent to xterm. The normal exit path prefers tmux capture-pane,
+  // but a fast session death can remove the pane before that command runs, so this preserves the
+  // same final words the operator just saw without turning Vibechemy into a recorder.
+  private renderedTails = new Map<string, string>()
   // Heal budget per session: how many re-attaches we've spent, and when the last one fired, so
   // fast flapping is capped (HEAL_MAX_ATTEMPTS per HEAL_WINDOW_MS) while a long-lived pane that
   // dies once, months later, still gets a fresh budget.
@@ -46,9 +55,11 @@ export class PtyBridge {
 
   attach(sessionId: string, tmuxName: string, cols: number, rows: number, viewerId?: string): void {
     if (this.clients.has(sessionId)) return // no double-attach: one client per session, always
+    const firstAttach = !this.attachInfo.has(sessionId)
     const generation = ++this.nextGeneration
     const effectiveViewerId = viewerId ?? `pty-${generation}`
     this.attachInfo.set(sessionId, { tmuxName, cols, rows, viewerId: effectiveViewerId })
+    if (firstAttach) this.renderedTails.set(sessionId, '')
     // Must attach on OUR socket, or it'll talk to the user's default tmux server.
     const client = pty.spawn('tmux', ['-L', tmuxSocket(), 'attach-session', '-t', tmuxName], {
       name: 'xterm-256color',
@@ -64,13 +75,14 @@ export class PtyBridge {
     const record: ClientRecord = { client, generation, exited, resolveExited }
     client.onData((d) => {
       if (this.clients.get(sessionId)?.generation !== generation) return
+      this.renderedTails.set(sessionId, appendRenderedTail(this.renderedTails.get(sessionId) ?? '', d))
       this.onData(sessionId, d, effectiveViewerId)
     })
-    client.onExit(() => {
+    client.onExit((event) => {
       resolveExited()
       if (this.clients.get(sessionId)?.generation !== generation) return
       this.clients.delete(sessionId)
-      void this.handleClientExit(sessionId)
+      void this.handleClientExit(sessionId, event.exitCode)
     })
     this.clients.set(sessionId, record)
   }
@@ -80,7 +92,7 @@ export class PtyBridge {
    * the physical generation before kill and never enters here. Decide between a real session death
    * (let the caller tombstone it) and a still-alive session (self-heal after a short backoff).
    */
-  private async handleClientExit(sessionId: string): Promise<void> {
+  private async handleClientExit(sessionId: string, exitCode: number): Promise<void> {
     const info = this.attachInfo.get(sessionId)
     const sessionAlive = info ? await this.hasSessionFn(info.tmuxName).catch(() => false) : false
     const prev = this.healAttempts.get(sessionId)
@@ -99,7 +111,7 @@ export class PtyBridge {
           .then((alive) => {
             if (this.disposed || this.clients.has(sessionId) || !this.attachInfo.has(sessionId)) return
             if (alive) this.attach(sessionId, info.tmuxName, info.cols, info.rows, info.viewerId)
-            else this.onExit(sessionId) // died during backoff → let the normal path tombstone it
+            else this.finishExit(sessionId, exitCode) // died during backoff → let the normal path tombstone it
           })
           .catch(() => {})
       }, HEAL_BACKOFF_MS)
@@ -107,7 +119,15 @@ export class PtyBridge {
     }
     // Not healable (session gone, or heal budget exhausted): run the normal exit path. A gone
     // session gets tombstoned; an exhausted-but-alive session settles blank rather than looping.
-    this.onExit(sessionId)
+    this.finishExit(sessionId, exitCode)
+  }
+
+  private finishExit(sessionId: string, exitCode: number): void {
+    const output = boundLastOutput(this.renderedTails.get(sessionId) ?? '')
+    this.attachInfo.delete(sessionId)
+    this.healAttempts.delete(sessionId)
+    this.renderedTails.delete(sessionId)
+    this.onExit(sessionId, { exitCode, output })
   }
 
   write(sessionId: string, data: string): void {
@@ -136,6 +156,7 @@ export class PtyBridge {
     this.clients.delete(sessionId)
     this.attachInfo.delete(sessionId)
     this.healAttempts.delete(sessionId)
+    this.renderedTails.delete(sessionId)
     if (!record) return Promise.resolve()
     try {
       record.client.kill()
@@ -151,6 +172,7 @@ export class PtyBridge {
     this.clients.clear()
     this.attachInfo.clear()
     this.healAttempts.clear()
+    this.renderedTails.clear()
     for (const record of records) {
       try {
         record.client.kill()

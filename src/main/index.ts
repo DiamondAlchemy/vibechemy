@@ -263,7 +263,14 @@ app.whenReady().then(async () => {
 
   const sessions = new SessionManager(db, presets, undefined, undefined, undefined, undefined, activity)
   const notifyExit = (id: string): void => {
-    const event: SessionExitEvent = { id, expected: sessions.wasDeliberate(id) }
+    const expected = sessions.wasDeliberate(id)
+    const row = sessions.rowById(id)
+    const event: SessionExitEvent = {
+      id,
+      expected,
+      lastOutput: expected ? null : (row?.lastOutput ?? null),
+      exitCode: expected ? null : (row?.lastExitCode ?? null)
+    }
     if (mainWindow && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send(IPC.sessionExit, event)
   }
   const pty = new PtyBridge(
@@ -272,9 +279,9 @@ app.whenReady().then(async () => {
         mainWindow.webContents.send(IPC.sessionData, { sessionId, data, viewerId })
       }
     },
-    (sessionId) => {
+    (sessionId, snapshot) => {
       void sessions
-        .markExitedIfGone(sessionId)
+        .markExitedIfGone(sessionId, snapshot)
         .then((died) => {
           if (died) notifyExit(sessionId)
         })

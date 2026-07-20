@@ -56,6 +56,10 @@ export interface SessionExitEvent {
   id: string
   /** true = deliberate end (UI close / merge / discard); false = the CLI died on its own. */
   expected: boolean
+  /** Bounded final terminal tail for an unexpected exit; null when unavailable or deliberate. */
+  lastOutput?: string | null
+  /** Exit code reported by the pane's pty attach client. */
+  exitCode?: number | null
 }
 
 export interface DiffResult {

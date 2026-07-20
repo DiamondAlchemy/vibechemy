@@ -1394,6 +1394,12 @@ input { outline: none; font-family: var(--sans); }
 .tombstone-when { margin-left: auto; color: var(--text-faint); }
 .tombstone-body { display: flex; flex-direction: column; gap: 10px; padding: 14px; align-items: flex-start; }
 .tombstone-hint { font-size: 12px; color: var(--text-dim); }
+.tombstone-blackbox { display: flex; flex: 1 1 auto; flex-direction: column; width: 100%; min-height: 0; overflow: hidden; border: 1px solid rgba(255, 194, 75, 0.18); border-radius: 6px; background: rgba(0, 0, 0, 0.24); }
+.tombstone-meta { padding: 5px 8px; color: var(--text-faint); border-bottom: 1px solid rgba(255, 194, 75, 0.12); font: 10px var(--mono); letter-spacing: 0.5px; }
+.tombstone-output { flex: 1 1 auto; min-height: 72px; max-height: 280px; width: 100%; margin: 0; padding: 8px; overflow: auto; color: var(--text-dim); font: 11px/1.4 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+.tombstone-compact-blackbox { position: relative; color: var(--text-faint); font: 10px var(--mono); }
+.tombstone-compact-blackbox summary { cursor: pointer; white-space: nowrap; }
+.tombstone-compact-blackbox[open] .tombstone-output { position: absolute; top: calc(100% + 8px); left: 50%; z-index: 8; width: min(560px, calc(100vw - 48px)); max-height: min(320px, 50vh); transform: translateX(-50%); border: 1px solid rgba(255, 194, 75, 0.28); border-radius: 6px; background: var(--surface); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45); }
 .tombstone-error { font-size: 12px; color: var(--red); }
 .tombstone-actions { display: flex; gap: 8px; }
 .tombstone-revive:not(:disabled) { color: var(--amber); border-color: rgba(255, 194, 75, 0.45); }
