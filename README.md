@@ -1,15 +1,55 @@
+<div align="center">
+
 # Vibechemy
 
-**A terminal-grid cockpit for commanding a fleet of CLI coding agents.**
+### Command a fleet of CLI coding agents from one cockpit.
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-6ea8ff?style=flat)](./LICENSE)
+[![Platform: macOS](https://img.shields.io/badge/platform-macOS%20(Apple%20Silicon)-lightgrey?style=flat)](#what-it-is-not)
+[![Stars](https://img.shields.io/github/stars/DiamondAlchemy/vibechemy?style=flat&logo=github)](https://github.com/DiamondAlchemy/vibechemy/stargazers)
+[![Built with Electron](https://img.shields.io/badge/Electron-191970?logo=electron&logoColor=white)](https://www.electronjs.org/)
+
+Run Claude Code, Codex, Kimi and OpenCode side by side — each in its own git worktree,
+in live terminals you can watch, steer, and merge.
+
+[Quickstart](#quickstart) · [What it is](#what-it-is) · [Getting started](./GETTING-STARTED.md)
+
+<img src="docs/media/hero.png" width="100%"
+     alt="Vibechemy cockpit: four AI coding agents - Kimi, Claude Opus, Grok and OpenCode/MiniMax - running in parallel in live tmux terminals on a freeform canvas, each in its own isolated git worktree" />
+
+<sub><b>Four agents, four vendors, one workspace.</b> Each in an isolated git worktree, all visible at once.</sub>
+
+</div>
+
+---
+
+If you've ever had three AI CLIs open in three terminals and lost track of who's doing what — this is
+the cockpit for that.
+
+## What it does
+
+- **Every agent gets its own git worktree.** Spawn Claude Code, Codex, Kimi, OpenCode, Grok — or any
+  command-based CLI — into an isolated worktree and branch. They can't step on each other, and they
+  can't touch `main`.
+- **You can see all of them working.** Real `tmux`-backed terminals on a freeform canvas: watch, type
+  into, scroll, rearrange. No hidden background processes — if an agent is working, you see it working.
+- **An agent can command the fleet.** Summon an orchestrator and it gets an authenticated MCP control
+  plane — `spawn_worker`, `send_to_worker`, `get_diff`, `merge_worker`. Plain workers never inherit
+  those tools, so nothing spawns or merges behind your back.
+- **You approve every merge.** Review each worker's diff and merge it locally. Vibechemy never pushes.
+- **The fleet remembers.** A per-project knowledge base, coding standards and shared memory are
+  injected into every agent's context, so the fleet stops re-solving and re-breaking the same things.
+
+*BYOK, always — Vibechemy drives your own CLI subscriptions. It detects that you're signed in and
+never proxies, stores, or sees a token.*
+
+## Why this exists
 
 I'm not a career software engineer. I run a real business in a physical, regulated industry and I
 needed to ship and operate my own software without a dev team. So I built the machine that lets one
 operator command many coding agents at once — watch them work in real terminals, review their diffs,
 and merge the good ones. **Vibechemy** is the open-source core of that machine: the orchestration
 shell, with the business-specific and proprietary parts removed.
-
-If you've ever had three AI CLIs open in three terminals and lost track of who's doing what — this is
-the cockpit for that.
 
 > **Who made this:** Built by [DiamondAlchemy](https://github.com/DiamondAlchemy).
 > The full private rig runs my actual company; Vibechemy is the reusable core.
