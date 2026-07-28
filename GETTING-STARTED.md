@@ -58,6 +58,28 @@ Do not continue until each command succeeds and `node --version` reports a suppo
 
 ## 2. Install and launch Vibechemy
 
+### Fast path: the packaged app (macOS, Apple Silicon)
+
+```bash
+npx vibechemy
+```
+
+That downloads the latest [release](https://github.com/DiamondAlchemy/vibechemy/releases),
+verifies its checksum, installs it under `~/.vibechemy/app`, and launches it — about two
+minutes on ordinary broadband. You can also grab the `.dmg` from the releases page directly.
+Two notes:
+
+- Release builds are not yet notarized with Apple: if macOS blocks the first launch,
+  right-click the app and choose **Open** once. That is a one-time step.
+- The packaged app updates itself: when a new version is downloaded you'll see a green
+  **⟳ Update ready** chip in the title bar — click it to restart into the new version
+  (your terminals' tmux sessions survive the restart). Nothing updates without your click.
+
+The packaged app uses `~/Library/Application Support/vibechemy/` and MCP port 4880. If you're
+on Intel, Linux, or Windows — or want to hack on Vibechemy itself — run from source below.
+
+### From source (any platform)
+
 Clone the public repository and install its locked dependency tree:
 
 ```bash

@@ -56,6 +56,10 @@ function App(): React.JSX.Element {
       .then((v) => setAppVer(v.split('.').slice(0, 2).join('.')))
       .catch(() => {}) // no version chip is better than a wrong one
   }, [])
+  // Auto-update: a downloaded update stages silently; this chip is the only surface. Applying
+  // restarts the app, so it is always the human's click — agents may be mid-task.
+  const [updateReady, setUpdateReady] = useState<string | null>(null)
+  useEffect(() => api.onUpdateReady((msg) => setUpdateReady(msg.version)), [])
   const [sessionsOpen, setSessionsOpen] = useState(false) // the Sessions popover
   const [settingsOpen, setSettingsOpen] = useState(false) // the Settings modal
   // Worker-grid layout id; null = auto grid, 'free' = the freeform canvas. Persisted so the choice
@@ -426,6 +430,15 @@ function App(): React.JSX.Element {
         </div>
 
         <div className="right">
+          {updateReady && (
+            <button
+              className="update-chip"
+              data-tip={`Vibechemy ${updateReady} is downloaded and ready — restart to apply (your terminals' tmux sessions survive the restart)`}
+              onClick={() => void api.installUpdate()}
+            >
+              ⟳ Update ready
+            </button>
+          )}
           {workersElsewhere.length > 0 && (
             <div className="workers-elsewhere">
               {workersElsewhere.map((g) => (

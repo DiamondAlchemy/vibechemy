@@ -1,0 +1,53 @@
+# Release pipeline: pushing a tag like v1.0.0 builds the packaged app and uploads it — plus
+# the electron-updater feed (latest-mac.yml) — to a DRAFT GitHub Release. A human reviews and
+# publishes the draft; publishing is what makes installs see the update.
+#
+# Apple Silicon only for now: GitHub retired Intel macOS runners, and cross-building x64 would
+# need per-arch prebuilds for better-sqlite3/node-pty/sherpa-onnx. Revisit if Intel demand shows.
+# Artifacts are ad-hoc signed (no Developer ID yet): first launch needs right-click → Open.
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  mac-arm64:
+    runs-on: macos-14
+    env:
+      # No signing cert in CI — skip discovery so electron-builder ad-hoc signs instead of failing.
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify tag matches package.json version
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version $PKG_VERSION" >&2
+            exit 1
+          fi
+
+      # build:mac = rebuild natives for Electron ABI, typecheck + bundle, then electron-builder.
+      # The extra args land on the trailing electron-builder command: publish the dmg/zip and
+      # latest-mac.yml to a draft release for this tag.
+      - name: Build and upload draft release
+        run: npm run build:mac -- --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: List built artifacts
+        run: ls -la /tmp/vibechemy-dist

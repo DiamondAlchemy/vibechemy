@@ -5,7 +5,7 @@ export default defineConfig({
   resolve: { alias: { '@shared': resolve('src/shared') } },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'launcher/**/*.test.mjs'],
     pool: 'forks' // native modules (better-sqlite3, node-pty) are happier in forked processes
   }
 })

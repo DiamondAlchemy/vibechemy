@@ -1,0 +1,30 @@
+{
+  "name": "vibechemy",
+  "version": "1.0.0",
+  "description": "Command a fleet of AI coding agents. Downloads and launches the latest Vibechemy release.",
+  "bin": {
+    "vibechemy": "./cli.mjs"
+  },
+  "files": [
+    "cli.mjs",
+    "lib.mjs",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18.17"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DiamondAlchemy/vibechemy.git"
+  },
+  "homepage": "https://github.com/DiamondAlchemy/vibechemy#readme",
+  "keywords": [
+    "ai",
+    "coding-agents",
+    "claude-code",
+    "codex",
+    "orchestrator",
+    "terminal"
+  ]
+}

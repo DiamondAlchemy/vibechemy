@@ -21,6 +21,7 @@ import { EventBus } from './events/EventBus'
 import { MergeService } from './git/MergeService'
 import { WorktreeService } from './git/WorktreeService'
 import { registerIpc } from './ipc/handlers'
+import { initUpdater } from './updates/updater'
 import { KnowledgeStore } from './knowledge/KnowledgeStore'
 import { loadOrCreateToken, startMcpServer, type McpHandle } from './mcp/server'
 import {
@@ -365,6 +366,7 @@ app.whenReady().then(async () => {
     // Invalid saved bounds fall back to the defaults.
   }
   createWindow(savedBounds)
+  initUpdater(() => mainWindow)
 
   let boundsTimer: NodeJS.Timeout | null = null
   const saveBounds = (): void => {

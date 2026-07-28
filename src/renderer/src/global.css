@@ -429,6 +429,16 @@ input { outline: none; font-family: var(--sans); }
    accent-pill look; -webkit-app-region no-drag comes from the .titlebar button rule so the
    chips stay clickable over the drag region. */
 .workers-elsewhere { display: flex; align-items: center; gap: 6px; }
+/* Auto-update ready chip — green = good news waiting, applies only on click. */
+.update-chip {
+  display: flex; align-items: center; gap: 5px;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.3px; color: var(--green);
+  padding: 2px 8px; border-radius: 7px;
+  border: 1px solid rgba(93, 255, 176, 0.35);
+  background: rgba(93, 255, 176, 0.06);
+  cursor: pointer; transition: all 0.14s ease;
+}
+.update-chip:hover { border-color: rgba(93, 255, 176, 0.6); background: rgba(93, 255, 176, 0.12); text-shadow: var(--glow-green); }
 .worker-elsewhere-chip {
   display: flex; align-items: center; gap: 5px;
   font-family: var(--mono); font-size: 10px; letter-spacing: 0.3px; color: var(--text-dim);

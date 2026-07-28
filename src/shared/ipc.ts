@@ -43,7 +43,9 @@ export const IPC = {
   voiceTranscribe: 'voice:transcribe', // mono PCM16 WAV ArrayBuffer → local transcript
   settingsGet: 'settings:get',
   settingsSet: 'settings:set',
-  usageReport: 'usage:report' // per-agent remaining plan usage (quota left) → UsageReport
+  usageReport: 'usage:report', // per-agent remaining plan usage (quota left) → UsageReport
+  updatesReady: 'updates:ready', // main → renderer: an update finished downloading (UpdateReadyMsg)
+  updatesInstall: 'updates:install' // renderer → main: quit and apply the downloaded update
 } as const
 
 export interface SessionDataMsg {
@@ -82,6 +84,11 @@ export interface MergeResult {
   conflict?: boolean
   message: string
   mergedInto?: string
+}
+
+/** Sent when the auto-updater has a downloaded update staged and ready to apply. */
+export interface UpdateReadyMsg {
+  version: string
 }
 
 /** Honest on-device speech-recognition state for Settings and push-to-talk. */

@@ -97,6 +97,14 @@ macOS-first (built and run on Apple Silicon). Not tested on Windows/Linux yet.
 
 ## Quickstart
 
+macOS (Apple Silicon) — download, verify, and launch the latest release:
+
+```bash
+npx vibechemy
+```
+
+Or run from source on any platform:
+
 ```bash
 git clone https://github.com/DiamondAlchemy/vibechemy.git
 cd vibechemy

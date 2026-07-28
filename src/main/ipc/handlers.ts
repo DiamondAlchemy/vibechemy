@@ -16,6 +16,7 @@ import {
   parsePersonalAgent
 } from '@shared/agents/personalAgent'
 import { AgentSetupService } from '../agents/AgentSetupService'
+import { installUpdateNow } from '../updates/updater'
 import { startOfDay } from '../activity/digest'
 import type { ActivityLog } from '../activity/ActivityLog'
 import type { ControlPlane } from '../control/ControlPlane'
@@ -245,6 +246,7 @@ export function registerIpc({
     return !app.isPackaged && version === process.versions.electron ? packageJson.version : version
   })
   ipcMain.handle(IPC.usageReport, () => usage.report())
+  ipcMain.handle(IPC.updatesInstall, () => installUpdateNow())
   ipcMain.handle(IPC.voiceStatus, () => voice.status())
   ipcMain.handle(IPC.voiceTranscribe, (_event, wav: ArrayBuffer) => voice.transcribe(Buffer.from(wav)))
   ipcMain.handle(IPC.settingsGet, (_event, key: string) => settings.get(key))

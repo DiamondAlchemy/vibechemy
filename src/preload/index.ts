@@ -7,6 +7,7 @@ import type {
   PrecheckResult,
   SessionDataMsg,
   SessionExitEvent,
+  UpdateReadyMsg,
   VoiceStatus
 } from '@shared/ipc'
 import type { McEvent } from '@shared/events'
@@ -86,7 +87,13 @@ const api = {
   voiceTranscribe: (wav: ArrayBuffer): Promise<string> => ipcRenderer.invoke(IPC.voiceTranscribe, wav),
   getSetting: (key: string): Promise<string | null> => ipcRenderer.invoke(IPC.settingsGet, key),
   setSetting: (key: string, value: string): Promise<void> => ipcRenderer.invoke(IPC.settingsSet, { key, value }),
-  getUsageReport: (): Promise<UsageReport> => ipcRenderer.invoke(IPC.usageReport)
+  getUsageReport: (): Promise<UsageReport> => ipcRenderer.invoke(IPC.usageReport),
+  onUpdateReady: (cb: (msg: UpdateReadyMsg) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, msg: UpdateReadyMsg): void => cb(msg)
+    ipcRenderer.on(IPC.updatesReady, handler)
+    return () => ipcRenderer.removeListener(IPC.updatesReady, handler)
+  },
+  installUpdate: (): Promise<void> => ipcRenderer.invoke(IPC.updatesInstall)
 }
 
 if (process.contextIsolated) {
