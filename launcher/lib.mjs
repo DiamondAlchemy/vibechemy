@@ -49,13 +49,14 @@ export function parseMacFeed(text) {
 
 /**
  * Pick the zip artifact for an arch from a parsed feed (the zip is what we extract and
- * launch; the dmg is for humans). Returns null when the feed has no matching zip.
+ * launch; the dmg is for humans). Arch match is REQUIRED — installing a wrong-arch zip on
+ * the quiet would be worse than failing, so there is no any-zip fallback.
  * @param {{ files: Array<{ url: string, sha512: string }> } | null} feed
  * @param {string} arch e.g. 'arm64'
  */
 export function pickZipAsset(feed, arch) {
   if (!feed) return null
-  return feed.files.find((f) => f.url.endsWith(`-${arch}.zip`)) ?? feed.files.find((f) => f.url.endsWith('.zip')) ?? null
+  return feed.files.find((f) => f.url.endsWith(`-${arch}.zip`)) ?? null
 }
 
 /**

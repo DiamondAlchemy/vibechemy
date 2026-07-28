@@ -42,9 +42,9 @@ describe('pickZipAsset', () => {
     const feed = parseMacFeed(FEED)
     expect(pickZipAsset(feed, 'arm64')?.url).toBe('vibechemy-1.0.0-arm64.zip')
   })
-  it('falls back to any zip when no arch match, null when none', () => {
-    const feed = { files: [{ url: 'vibechemy-1.0.0.zip', sha512: 'x=' }] }
-    expect(pickZipAsset(feed, 'arm64')?.url).toBe('vibechemy-1.0.0.zip')
+  it('is arch-strict: no arch-matching zip → null (never a wrong-arch install)', () => {
+    expect(pickZipAsset({ files: [{ url: 'vibechemy-1.0.0.zip', sha512: 'x=' }] }, 'arm64')).toBeNull()
+    expect(pickZipAsset({ files: [{ url: 'vibechemy-1.0.0-x64.zip', sha512: 'x=' }] }, 'arm64')).toBeNull()
     expect(pickZipAsset({ files: [{ url: 'a.dmg', sha512: 'x=' }] }, 'arm64')).toBeNull()
     expect(pickZipAsset(null, 'arm64')).toBeNull()
   })

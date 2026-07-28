@@ -11,7 +11,7 @@
 
 import { createHash } from 'node:crypto'
 import { createWriteStream } from 'node:fs'
-import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
@@ -105,6 +105,10 @@ async function main() {
   if (!feedRes.ok) fail(`could not fetch update feed (${feedRes.status})`)
   const feed = parseMacFeed(await feedRes.text())
   if (!feed) fail('update feed did not parse — refusing to guess at artifacts')
+  // The version becomes a filesystem path under APP_ROOT — validate strictly so a malformed
+  // or hostile feed can never traverse (rm/rename below are destructive).
+  if (!/^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$/.test(feed.version))
+    fail(`update feed carries an invalid version string (${JSON.stringify(feed.version)})`)
   const zip = pickZipAsset(feed, 'arm64')
   if (!zip) fail('no arm64 zip artifact in the update feed')
 
@@ -125,28 +129,33 @@ async function main() {
   if (!zipUrl) fail(`release is missing the artifact named in its own feed (${zip.url})`)
   out(`Downloading Vibechemy ${feed.version} (~230 MB)…`)
   await mkdir(APP_ROOT, { recursive: true })
+  // In-flight failures below THROW (never process.exit) so the finally sweep always runs —
+  // a checksum mismatch or bad zip must not litter ~230 MB temp files (review 2026-07-28).
   const tmpZip = join(APP_ROOT, `.download-${process.pid}.zip`)
+  const tmpDir = join(APP_ROOT, `.extract-${process.pid}`)
   try {
     const digest = await downloadTo(zipUrl, tmpZip)
-    if (digest !== zip.sha512) fail('checksum mismatch — the download does not match the release feed; not installing')
+    if (digest !== zip.sha512)
+      throw new Error('checksum mismatch — the download does not match the release feed; not installing')
 
     out('Verified. Installing…')
-    const tmpDir = join(APP_ROOT, `.extract-${process.pid}`)
     await rm(tmpDir, { recursive: true, force: true })
     await mkdir(tmpDir, { recursive: true })
     const ditto = spawnSync('ditto', ['-x', '-k', tmpZip, tmpDir], { stdio: 'pipe' })
-    if (ditto.status !== 0) fail('extraction failed: ' + String(ditto.stderr))
+    if (ditto.status !== 0) throw new Error('extraction failed: ' + String(ditto.stderr))
     const extractedApp = await findApp(tmpDir)
-    if (!extractedApp) fail('no .app found in the release zip')
+    if (!extractedApp) throw new Error('no .app found in the release zip')
     await rm(installDir, { recursive: true, force: true })
     await rename(tmpDir, installDir)
     await writeFile(marker, new Date().toISOString() + '\n')
 
     const appPath = await findApp(installDir)
-    if (!appPath) fail('install finished but the app is missing — please retry')
+    if (!appPath) throw new Error('install finished but the app is missing — please retry')
     await launch(appPath, feed.version)
   } finally {
     await rm(tmpZip, { force: true })
+    // Renamed-away on success (no-op); a failed extract's litter comes off here.
+    await rm(tmpDir, { recursive: true, force: true }).catch(() => {})
   }
 }
 
