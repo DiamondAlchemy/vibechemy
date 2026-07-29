@@ -2,15 +2,19 @@
 
 # Vibechemy
 
-### Command a fleet of CLI coding agents from one cockpit.
+### One orchestrator. Your whole fleet.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-6ea8ff?style=flat)](./LICENSE)
 [![Platform: macOS](https://img.shields.io/badge/platform-macOS%20(Apple%20Silicon)-lightgrey?style=flat)](#what-it-is-not)
 [![Stars](https://img.shields.io/github/stars/DiamondAlchemy/vibechemy?style=flat&logo=github)](https://github.com/DiamondAlchemy/vibechemy/stargazers)
 [![Built with Electron](https://img.shields.io/badge/Electron-191970?logo=electron&logoColor=white)](https://www.electronjs.org/)
 
-Run Claude Code, Codex, Kimi and OpenCode side by side — each in its own git worktree,
-in live terminals you can watch, steer, and merge.
+Summon a single agent. It holds your project's context and directs every other model for you —
+spawning them into isolated git worktrees, steering them mid-task, reading their diffs, running
+their tests.
+
+**You describe the outcome. It writes the prompts.**
+More conversation than prompt engineering — one thread instead of six terminals.
 
 [Quickstart](#quickstart) · [What it is](#what-it-is) · [Getting started](./GETTING-STARTED.md)
 
@@ -23,25 +27,55 @@ in live terminals you can watch, steer, and merge.
 
 ---
 
-If you've ever had three AI CLIs open in three terminals and lost track of who's doing what — this is
-the cockpit for that.
+Three AI CLIs in three terminals, and you're the one carrying context between them. Vibechemy
+inverts that: you brief one orchestrator, and it does the carrying.
 
 ## What it does
 
-- **Every agent gets its own git worktree.** Spawn Claude Code, Codex, Kimi, OpenCode, Grok — or any
-  command-based CLI — into an isolated worktree and branch. They can't step on each other, and they
-  can't touch `main`.
-- **You can see all of them working.** Real `tmux`-backed terminals on a freeform canvas: watch, type
-  into, scroll, rearrange. No hidden background processes — if an agent is working, you see it working.
-- **An agent can command the fleet.** Summon an orchestrator and it gets an authenticated MCP control
-  plane — `spawn_worker`, `send_to_worker`, `get_diff`, `merge_worker`. Plain workers never inherit
-  those tools, so nothing spawns or merges behind your back.
-- **You approve every merge.** Review each worker's diff and merge it locally. Vibechemy never pushes.
-- **The fleet remembers.** A per-project knowledge base, coding standards and shared memory are
-  injected into every agent's context, so the fleet stops re-solving and re-breaking the same things.
+- **You talk to one agent, not six.** Summon an orchestrator — Claude, Codex, Grok, whichever you
+  already pay for — and it gets an authenticated MCP control plane: spawn a worker, steer it
+  mid-task, read its diff, run its checks, merge it. You describe the goal once; it dispatches the
+  rest.
+- **It's a conversation, not prompt engineering.** You say what you want the way you'd say it to a
+  colleague — *"the login retry is flaky, and I want the fix reviewed hard before it lands."* The
+  orchestrator writes the actual prompts: the constraints, the paths, the standards to hold to,
+  which model, how much reasoning effort. It can write a better brief than you'd dash off, because
+  it's the one holding the project's context. You stopped prompting; you're just talking.
+- **It already knows your project.** Every agent Vibechemy spawns is injected with the project's
+  shared memory, coding standards and knowledge base *before it writes a line*. The orchestrator
+  isn't guessing at your conventions, and the fleet stops re-solving and re-breaking the same
+  things.
+- **It routes work by model strength — on your policy.** You record which model is for what
+  ("Kimi for UI, Codex at high effort for backend audits"), and that policy rides into the
+  orchestrator's context. It then picks the model *and* the reasoning effort per task. The
+  judgement is yours; the dispatch is automatic.
+- **One frontier seat, many cheap hands.** The model that needs your project's context and
+  judgement is the orchestrator. The workers grinding through rote edits, mechanical refactors and
+  test runs don't. So a frontier seat directs while MiniMax, GLM or a small fast model does the
+  volume. On flat-rate plans your scarce frontier quota buys decisions instead of boilerplate; on
+  metered keys it's the same arithmetic in dollars. A per-agent usage panel shows what's left on
+  each plan, so you can see where the burn actually goes.
+- **Only the orchestrator holds the wheel.** Plain workers never inherit the control plane — they
+  cannot spawn, merge, or deploy. Nothing happens behind your back, because only the seat you
+  summoned has the tools.
+- **Every agent gets its own git worktree.** Isolated worktree and branch per agent. They can't
+  step on each other, and they can't touch `main`.
+- **You can see all of them working.** Real `tmux`-backed terminals on a freeform canvas — watch,
+  type into, scroll, rearrange. No hidden background processes.
+- **You approve every merge.** Review each worker's diff and merge locally. Vibechemy never pushes.
 
-*BYOK, always — Vibechemy drives your own CLI subscriptions. It detects that you're signed in and
-never proxies, stores, or sees a token.*
+## What it doesn't do
+
+Being precise about this, because the line matters:
+
+- **It doesn't summon itself.** You open the orchestrator and give it a goal. Vibechemy starts
+  nothing on its own, on a schedule or otherwise.
+- **It doesn't decide which model is best.** It follows the routing policy you record. Out of the
+  box it has no opinion about your vendors.
+- **It doesn't push, deploy, or merge without you.** Merges are local and reviewed. Deploys run
+  only a recipe you wrote, only when you say so.
+- **It doesn't proxy your credentials.** BYOK always: Vibechemy drives the CLIs you are already
+  signed into. It detects that you are signed in, and never stores, forwards, or sees a token.
 
 ## Why this exists
 
