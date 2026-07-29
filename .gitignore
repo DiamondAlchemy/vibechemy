@@ -13,3 +13,13 @@ dist/
 
 # TS incremental build caches
 *.tsbuildinfo
+
+# Agent context files. Vibechemy PROJECTS a managed block into the native context file of any
+# repo it runs an agent in (AGENTS.md / CLAUDE.md / GEMINI.md), and writes per-project shared
+# memory under .mission-control/. Those are machine-local operator notes, never source — and in
+# this repo they would otherwise show up as untracked files one careless "git add -A" from being
+# published. Ignore them here.
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+.mission-control/
