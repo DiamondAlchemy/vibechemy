@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { mergePath, repairPath, HOMEBREW_SENTINEL } from './pathRepair'
+import { describe, it, expect, vi } from 'vitest'
+import { mergePath, repairPath, HOMEBREW_SENTINEL, FALLBACK_DIRS } from './pathRepair'
 
 describe('mergePath', () => {
   it('keeps current entries first and appends missing ones without duplicates', () => {
@@ -16,26 +16,25 @@ describe('mergePath', () => {
 })
 
 describe('repairPath', () => {
-  it('skips the login-shell capture when homebrew is present, but STILL folds in the fallback dirs', () => {
-    const env = { PATH: `/usr/bin:${HOMEBREW_SENTINEL}` }
-    let captureCalled = false
-    repairPath(env, () => {
-      captureCalled = true
-      return '/should/not/be/used'
-    })
-    expect(captureCalled).toBe(false) // no expensive zsh -ilc spawn when homebrew already reachable
-    const parts = env.PATH.split(':')
-    // The regression: the kimi fallback dir used to be dropped whenever homebrew was present.
-    expect(env.PATH).toContain('/.kimi-code/bin')
-    expect(parts).toContain('/usr/local/bin')
-    expect(parts.slice(0, 2)).toEqual(['/usr/bin', HOMEBREW_SENTINEL]) // current entries keep priority
-    expect(env.PATH).not.toContain('/should/not/be/used')
+  // 2026-07-28 regression: the sentinel used to skip the WHOLE merge, so a homebrew-having launch
+  // (`npm run upgrade:mac` from a terminal) never picked up the fallback dirs — a CLI installed
+  // after boot (~/.kimi-code/bin) stayed invisible and every kimi pane exited 127 on spawn.
+  it('still appends the fallback dirs when the homebrew sentinel is present (dev terminal)', () => {
+    const capture = vi.fn(() => '/should/not/be/called')
+    const env: Record<string, string | undefined> = { PATH: `/usr/bin:${HOMEBREW_SENTINEL}` }
+    repairPath(env, capture)
+    expect(capture).not.toHaveBeenCalled() // the login-shell probe is the only thing the sentinel skips
+    expect(env.PATH!.split(':')).toEqual([
+      '/usr/bin',
+      HOMEBREW_SENTINEL,
+      ...FALLBACK_DIRS.filter((d) => d !== HOMEBREW_SENTINEL)
+    ])
   })
   it('merges the captured login-shell PATH plus fallbacks when sentinel is missing', () => {
     const env: Record<string, string | undefined> = { PATH: '/usr/bin:/bin' }
-    repairPath(env, () => '/opt/homebrew/bin:/tmp/mc-test/.local/bin')
+    repairPath(env, () => '/opt/homebrew/bin:/Users/x/.local/bin')
     expect(env.PATH!.split(':')).toEqual(
-      expect.arrayContaining(['/usr/bin', '/bin', '/opt/homebrew/bin', '/tmp/mc-test/.local/bin', '/usr/local/bin'])
+      expect.arrayContaining(['/usr/bin', '/bin', '/opt/homebrew/bin', '/Users/x/.local/bin', '/usr/local/bin'])
     )
     expect(env.PATH!.startsWith('/usr/bin:/bin')).toBe(true)
   })

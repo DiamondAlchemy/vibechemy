@@ -11,16 +11,17 @@ import { join } from 'node:path'
 export const HOMEBREW_SENTINEL = '/opt/homebrew/bin'
 
 /**
- * Where the agent CLIs we ship presets for actually land. These are merged UNCONDITIONALLY
- * (see repairPath) because an agent installed AFTER the app booted must still be runnable —
- * a PATH entry for a not-yet-existing directory is harmless, and the lookup happens at exec
- * time. Verified against real installs on 2026-07-28:
+ * Where the agent CLIs we ship presets for actually land. Exported so the tests can assert the
+ * exact resulting order. These are merged UNCONDITIONALLY (see repairPath) because an agent
+ * installed AFTER the app booted must still be runnable — a PATH entry for a not-yet-existing
+ * directory is harmless, and the lookup happens at exec time. Verified against real installs
+ * on 2026-07-28:
  *   ~/.local/bin      claude, codex, cursor-agent, agy, grok (curl installers' common target)
  *   ~/.kimi-code/bin  kimi (code.kimi.com installer; it PATHs via ~/.zshrc, which the app never sources)
  *   ~/.grok/bin       grok (x.ai/cli installer's own target)
  *   ~/.bun/bin        anything installed with bun (an opencode install path)
  */
-const FALLBACK_DIRS = [
+export const FALLBACK_DIRS = [
   HOMEBREW_SENTINEL,
   '/usr/local/bin',
   join(homedir(), '.local', 'bin'),
@@ -62,15 +63,17 @@ export function captureLoginShellPath(shell = process.env.SHELL || '/bin/zsh'): 
 }
 
 /**
- * Repair PATH at boot. The static FALLBACK_DIRS are ALWAYS folded in (cheap, deduped) — a tool
- * installed into ~/.kimi-code/bin or ~/.local/bin after boot, or reachable only via a fallback
- * dir when homebrew already happens to be on PATH, must still be found. Only the EXPENSIVE
- * login-shell capture is gated on the homebrew sentinel: a normal dev terminal (homebrew
- * present) skips the ~80ms `zsh -ilc` spawn, but its fallbacks still land.
+ * The sentinel gates only the login-shell probe — a normal dev terminal already carries homebrew,
+ * so there is nothing worth a subprocess to capture (measured 70-110ms). The fallback dirs merge
+ * UNCONDITIONALLY: homebrew's presence says nothing about whether ~/.kimi-code/bin or ~/.local/bin
+ * are on PATH. repairPath runs once at boot, so this PATH is effectively the app's for its whole
+ * life, and every pane inherits it (tmux copies the environment of the CLIENT that creates a
+ * session — verified 2026-07-28 — so a surviving tmux server does NOT pin a stale PATH, but no
+ * live tmux patch can fix it either: only the app's boot PATH matters).
  *
- * (2026-07-28: the old early-return-when-homebrew-present made FALLBACK_DIRS dead on every
- * install launched from a terminal, so a fresh `curl … kimi` install into ~/.kimi-code/bin
- * stayed invisible and `kimi` panes exited 127 instantly.)
+ * 2026-07-28: the old early-return-when-homebrew-present made FALLBACK_DIRS dead on every install
+ * launched from a terminal (i.e. every upgrade:mac), so kimi installed 6 minutes after boot stayed
+ * invisible and every kimi pane exited 127 the instant it spawned.
  */
 export function repairPath(
   env: Record<string, string | undefined> = process.env,
