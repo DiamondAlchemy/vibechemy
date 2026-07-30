@@ -1391,6 +1391,7 @@ input { outline: none; font-family: var(--sans); }
 .free-pane .pane { width: 100%; height: 100%; }
 .free-pane .pane-head { cursor: grab; }
 .free-pane .pane-head:active { cursor: grabbing; }
+.free-pane.peeked { transition: transform 0.18s ease; box-shadow: 0 24px 70px -18px rgba(0, 0, 0, 0.9); }
 .glass-panes .free-pane .pane {
   /* Clear glass, not frosted: heavy backdrop blur averages the starfield's 1px stars into flat
      dark, which reads as an opaque slab (the no-blur canvas frames looked right by comparison).

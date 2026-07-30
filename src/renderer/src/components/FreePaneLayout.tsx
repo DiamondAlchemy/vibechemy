@@ -15,6 +15,7 @@ import { useCanvasZoom, type ClientPoint } from '../useCanvasZoom'
 import { openWidgetsMenu, useWidgets } from '../useWidgets'
 import { WIDGET_CARD_H, WIDGET_CARD_W, isWidgetId } from '@shared/widgets/catalog'
 import { fitScale, focusRect, pickFocusPane, type ZoomLevel, type ZoomPaneBox } from '@shared/canvas/zoom'
+import { peekRect } from '@shared/canvas/hoverPeek'
 import {
   BG_STYLES,
   BG_LABELS,
@@ -372,6 +373,26 @@ export function FreePaneLayout({
   const zoomDefault = zoom.zoomDefault
   const overview = zoomLevel === 'overview'
   const focusMode = zoomLevel === 'focus' && zoomFocusedId !== null
+
+  // Hover-peek swaps in a genuinely enlarged transient rect, causing the pty to resize and the
+  // CLI to reflow at readable width. It is available only at default zoom with the pen inactive.
+  // The viewport is captured into state when the dwell fires, keeping render-time geometry pure.
+  const [peeked, setPeeked] = useState<{ id: string; viewport: NodeRect } | null>(null)
+  const peekEnabled = zoomLevel === 'default' && drawMode === 'off'
+  const activePeek = peekEnabled ? peeked : null
+  const peekControllerFor = useCallback(
+    (id: string) => ({
+      enabled: peekEnabled,
+      peeked: peekEnabled && peeked?.id === id,
+      activate: () => {
+        const el = surfaceElRef.current
+        if (!el) return
+        setPeeked({ id, viewport: { x: el.scrollLeft, y: el.scrollTop, w: el.clientWidth, h: el.clientHeight } })
+      },
+      deactivate: () => setPeeked((cur) => (cur?.id === id ? null : cur))
+    }),
+    [peekEnabled, peeked]
+  )
   useEffect(() => {
     zoomLevelRef.current = zoomLevel
   }, [zoomLevel])
@@ -875,7 +896,13 @@ export function FreePaneLayout({
             return (
               <FreePane
                 key={s.id}
-                rect={zs === 'focused' && spotlight ? spotlight : pixelFor(s.id, i)}
+                rect={
+                  zs === 'focused' && spotlight
+                    ? spotlight
+                    : activePeek?.id === s.id
+                      ? (peekRect(pixelFor(s.id, i), activePeek.viewport) ?? pixelFor(s.id, i))
+                      : pixelFor(s.id, i)
+                }
                 front={frontId === s.id || zs === 'focused'}
                 onGeom={(rect) => {
                   // Focus geometry is presentational (the spotlight) — never commit it over the
@@ -891,6 +918,7 @@ export function FreePaneLayout({
                 surfW={surf.w}
                 surfH={surf.h}
                 zoomState={zs}
+                peek={peekControllerFor(s.id)}
               >
                 {(startMove) => (
                   <TerminalPane

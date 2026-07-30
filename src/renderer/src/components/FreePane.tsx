@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef } from 'react'
 import { clampNodeSize, type ClientToCanvasPoint, type NodeRect } from '@shared/canvas/layout'
+import { HOVER_PEEK_DELAY_MS, isPeekablePaneSize } from '@shared/canvas/hoverPeek'
 
 // Content-agnostic floating shell: owns move/resize/z-order; the child content receives
 // startMove to use as its header drag handle.
@@ -13,6 +14,7 @@ export function FreePane({
   surfW,
   surfH,
   zoomState,
+  peek,
   children
 }: {
   rect: NodeRect
@@ -29,6 +31,9 @@ export function FreePane({
   /** Semantic-zoom Focus role: 'focused' = the promoted spotlight pane (resize handle hidden),
    *  'hidden' = a receded sibling (kept mounted so its terminal never remounts, just invisible). */
   zoomState?: 'focused' | 'hidden'
+  /** Dwell-to-peek controller. The layout supplies the transient enlarged rect so the terminal
+   *  genuinely resizes and reflows; this pane owns only the dwell timers. */
+  peek?: { enabled: boolean; peeked: boolean; activate: () => void; deactivate: () => void }
   children: (startMove: (e: React.MouseEvent) => void) => React.JSX.Element
 }): React.JSX.Element {
   const drag = useRef<{
@@ -47,12 +52,39 @@ export function FreePane({
     onDragEndRef.current = onDragEnd
   })
 
+  const peekRef = useRef(peek)
+  useEffect(() => {
+    peekRef.current = peek
+  })
+  const peekTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const clearPeek = useCallback((): void => {
+    if (peekTimer.current) clearTimeout(peekTimer.current)
+    peekTimer.current = null
+    peekRef.current?.deactivate()
+  }, [])
+  const onPeekEnter = (e: React.MouseEvent): void => {
+    if (!peek?.enabled || zoomState || e.buttons !== 0) return
+    if (!isPeekablePaneSize(rect)) return
+    if (peekTimer.current) clearTimeout(peekTimer.current)
+    peekTimer.current = setTimeout(() => peekRef.current?.activate(), HOVER_PEEK_DELAY_MS)
+  }
+  useEffect(() => clearPeek, [clearPeek])
+  const shownPeek = !!peek?.enabled && !zoomState && !!peek.peeked
+
   const start = useCallback(
     (mode: 'move' | 'resize', e: React.MouseEvent): void => {
       // Let header control buttons (close/hide/lead/color) work without starting a move.
       if (mode === 'move' && (e.target as HTMLElement).closest('button')) return
       e.preventDefault()
       onFront()
+      // A peeked pane must not be dragged or resized: its rendered rect is the transient enlarged
+      // one, and a drag would commit it as the pane's real geometry. Collapse the peek and swallow
+      // this gesture; the next grab drags the pane at its true size.
+      if (peekRef.current?.peeked) {
+        clearPeek()
+        return
+      }
+      clearPeek()
       if (drag.current?.move) window.removeEventListener('mousemove', drag.current.move)
       if (drag.current?.up) window.removeEventListener('mouseup', drag.current.up)
       const useHomeFractions = !!toCanvasPoint && !!surfW && !!surfH
@@ -107,9 +139,11 @@ export function FreePane({
 
   return (
     <div
-      className={`free-pane${zoomState ? ` zoom-${zoomState}` : ''}`}
-      style={{ left: rect.x, top: rect.y, width: rect.w, height: rect.h, zIndex: front ? 5 : 1 }}
+      className={`free-pane${zoomState ? ` zoom-${zoomState}` : ''}${shownPeek ? ' peeked' : ''}`}
+      style={{ left: rect.x, top: rect.y, width: rect.w, height: rect.h, zIndex: shownPeek ? 7 : front ? 5 : 1 }}
       onMouseDownCapture={onFront}
+      onMouseEnter={onPeekEnter}
+      onMouseLeave={clearPeek}
     >
       {/* eslint-disable-next-line react-hooks/refs -- false positive: children() only stores
           startMove as the child's onMoveStart event handler; nothing reads a ref during render. */}
