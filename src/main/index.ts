@@ -10,6 +10,7 @@ import { PROFILES_KEY, parseAgentProfiles } from '@shared/agents/profiles'
 import { PERSONAL_AGENT_PRESET_ID, parsePersonalAgent, personalAgentPreset } from '@shared/agents/personalAgent'
 import type { Preset } from '@shared/types'
 import { ActivityLog } from './activity/ActivityLog'
+import { ArtifactsService } from './artifacts/ArtifactsService'
 import { createBootLogger } from './boot/bootLog'
 import { resolveIdentity } from './boot/identity'
 import { repairPath } from './boot/pathRepair'
@@ -48,7 +49,6 @@ import { UsageService } from './usage/UsageService'
 import { AsrRouter } from './voice/AsrRouter'
 import { ParakeetAsr } from './voice/ParakeetAsr'
 import { VoiceService } from './voice/VoiceService'
-import { isMicrophonePermission } from './voice/permissions'
 
 app.commandLine.appendSwitch('disable-renderer-backgrounding')
 app.commandLine.appendSwitch('disable-background-timer-throttling')
@@ -83,6 +83,7 @@ function createWindow(initialBounds?: Partial<Electron.Rectangle>): void {
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
+      webviewTag: true,
       backgroundThrottling: false
     }
   })
@@ -162,9 +163,24 @@ app.whenReady().then(async () => {
     return
   }
 
-  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback, details) => {
-    const mediaTypes = 'mediaTypes' in details ? details.mediaTypes : undefined
-    callback(isMicrophonePermission(permission, mediaTypes))
+  // Force safe preferences on every embedded viewer. Agent-written HTML from file:// must never
+  // gain Node access or a preload.
+  app.on('web-contents-created', (_event, contents) => {
+    contents.on('will-attach-webview', (_event, webPreferences) => {
+      delete webPreferences.preload
+      webPreferences.nodeIntegration = false
+      webPreferences.contextIsolation = true
+    })
+  })
+  // Default-deny permission prompts. The app renderer may use media for voice dictation and Live
+  // Mirror; embedded viewers stay locked out.
+  const isOwnRendererOrigin = (url: string): boolean =>
+    url.startsWith('http://localhost:') || url.startsWith('http://127.0.0.1:') || url.startsWith('file://')
+  session.defaultSession.setPermissionRequestHandler((contents, permission, callback) => {
+    if (permission === 'media' && contents.getType() !== 'webview' && isOwnRendererOrigin(contents.getURL())) {
+      return callback(true)
+    }
+    callback(false)
   })
 
   const db = openDatabase(join(app.getPath('userData'), 'vibechemy.sqlite'))
@@ -175,6 +191,8 @@ app.whenReady().then(async () => {
   const standards = new StandardsStore(db)
   seedStandards(standards)
   const settings = new SettingsStore(db)
+  const artifacts = new ArtifactsService(settings)
+  artifacts.startWatching(() => bus.emit('artifacts'))
   const voiceInstallScript = app.isPackaged
     ? join(process.resourcesPath, 'scripts', 'fetch-parakeet.sh')
     : join(app.getAppPath(), 'scripts', 'fetch-parakeet.sh')
@@ -305,7 +323,9 @@ app.whenReady().then(async () => {
     knowledge,
     standards,
     settings,
-    eventHub
+    eventHub,
+    artifacts,
+    (path) => mainWindow?.webContents.send(IPC.artifactOpen, { path })
   )
 
   registerIpc({
@@ -319,6 +339,7 @@ app.whenReady().then(async () => {
     settings,
     usage,
     voice,
+    artifacts,
     control: controlPlane,
     notifyExit,
     notifyProjects: () => bus.emit('projects'),

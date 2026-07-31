@@ -1144,6 +1144,36 @@ input { outline: none; font-family: var(--sans); }
 .settings-section { margin-bottom: 18px; }
 .settings-label { font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--accent); }
 .settings-desc { font-size: 12.5px; line-height: 1.5; color: var(--text-dim); margin-bottom: 12px; }
+.settings-vault {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: 8px;
+  border: 1px solid var(--hairline);
+  background: rgba(0, 0, 0, 0.35);
+}
+.settings-vault-path {
+  flex: 1; min-width: 0;
+  font-family: var(--mono); font-size: 12.5px; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.settings-vault-path.empty { color: var(--text-faint); }
+.settings-pick {
+  flex: 0 0 auto;
+  font-family: var(--mono); font-size: 12.5px; font-weight: 600;
+  color: var(--bg);
+  border: 1px solid var(--accent);
+  border-radius: 6px; padding: 6px 12px;
+  background: linear-gradient(180deg, var(--accent-soft), var(--accent));
+  box-shadow: 0 0 14px -3px rgba(127, 227, 255, 0.5);
+  cursor: pointer; transition: filter 0.13s ease;
+}
+.settings-pick:hover { filter: brightness(1.08); }
+.settings-clear {
+  flex: 0 0 auto;
+  font-family: var(--mono); font-size: 12.5px; color: var(--text-dim);
+  border: 1px solid var(--hairline); border-radius: 6px; padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.02); cursor: pointer; transition: all 0.13s ease;
+}
+.settings-clear:hover { color: var(--text); border-color: rgba(127, 227, 255, 0.3); background: rgba(127, 227, 255, 0.05); }
 /* Interface sub-controls (inside .settings-section) */
 .settings-row {
   display: flex; align-items: center; gap: 10px; min-height: 30px; margin-bottom: 10px;
@@ -1170,6 +1200,24 @@ input { outline: none; font-family: var(--sans); }
   appearance: none; -webkit-appearance: none;
 }
 .settings-select:focus { border-color: rgba(127,227,255,0.4); outline: none; }
+
+/* ---------- ARTIFACTS PANEL ---------- */
+.artifact-panel { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.artifact-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--hairline); }
+.artifact-title { font-family: var(--disp); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; font-size: 12px; color: var(--accent); }
+.artifact-btn { font-size: 12px; color: var(--text-dim); background: rgba(255,255,255,0.03); border: 1px solid var(--hairline); border-radius: 6px; padding: 3px 8px; cursor: pointer; }
+.artifact-btn:hover { color: var(--text); background: rgba(127,227,255,0.06); }
+.artifact-body { flex: 1 1 auto; min-height: 0; display: flex; }
+.artifact-list { flex: 0 0 220px; min-height: 0; overflow: auto; border-right: 1px solid var(--hairline); padding: 8px; }
+.artifact-group { margin-bottom: 12px; }
+.artifact-group-head { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); margin: 0 0 5px 2px; }
+.artifact-row { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; border-radius: 6px; cursor: pointer; border: 1px solid transparent; }
+.artifact-row:hover { background: rgba(127,227,255,0.05); }
+.artifact-row.on { background: rgba(127,227,255,0.08); border-color: rgba(127,227,255,0.28); }
+.artifact-name { font-size: 12px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.artifact-meta { font-family: var(--mono); font-size: 10px; color: var(--text-faint); }
+.artifact-view { flex: 1 1 auto; min-width: 0; position: relative; overflow: hidden; background: var(--bg-2); display: flex; flex-direction: column; }
+.artifact-empty { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; font-family: var(--sans); font-size: 13px; color: var(--text-dim); }
 
 /* ---------- WORKTREES PANEL ---------- */
 .wt-panel { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }

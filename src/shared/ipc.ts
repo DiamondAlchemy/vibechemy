@@ -44,6 +44,9 @@ export const IPC = {
   settingsGet: 'settings:get',
   settingsSet: 'settings:set',
   usageReport: 'usage:report', // per-agent remaining plan usage (quota left) → UsageReport
+  artifactsList: 'artifacts:list',
+  artifactOpen: 'artifacts:open', // main → renderer: open this artifact path in the viewer
+  shellOpenPath: 'shell:open-path',
   updatesReady: 'updates:ready', // main → renderer: an update finished downloading (UpdateReadyMsg)
   updatesInstall: 'updates:install' // renderer → main: quit and apply the downloaded update
 } as const

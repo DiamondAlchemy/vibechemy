@@ -107,6 +107,21 @@ export interface WorktreeEntry {
   sessionTitle?: string
 }
 
+// --- Artifacts / media viewer ---
+export type ArtifactType = 'pdf' | 'image' | 'html' | 'other'
+export interface ArtifactFile {
+  name: string
+  path: string
+  url: string // pathToFileURL(path).href — safe file:// for the in-app webview
+  type: ArtifactType
+  size: number // bytes
+  mtime: number // epoch ms
+}
+export interface ArtifactList {
+  dir: string | null
+  files: ArtifactFile[]
+}
+
 // A self-reported work state (distinct from the OS-level SessionStatus): a process can be
 // 'running' AND 'needs_review'. Set via the set_task MCP tool; absent until a worker reports.
 export type TaskState = 'working' | 'needs_review' | 'blocked' | 'done'

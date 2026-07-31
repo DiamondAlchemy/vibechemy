@@ -1,13 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { ErrorBoundary } from './ErrorBoundary'
+import { ArtifactsPanel } from './ArtifactsPanel'
 import { ReviewPanel } from './ReviewPanel'
 import { UsagePanel } from './UsagePanel'
 import { WorktreesPanel } from './WorktreesPanel'
+import { api } from '../api'
 
 const MIN_W = 280
 const MAX_W = 1400
 
-type DockMode = 'review' | 'usage' | 'worktrees'
+type DockMode = 'review' | 'artifacts' | 'usage' | 'worktrees'
 
 interface DockPanelDef {
   id: DockMode
@@ -29,6 +31,18 @@ const PANELS: DockPanelDef[] = [
       </svg>
     ),
     render: ({ onClose, projectId }) => <ReviewPanel projectId={projectId} onClose={onClose} />
+  },
+  {
+    id: 'artifacts',
+    title: 'Artifacts',
+    icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+        <path d="M6 2h7l5 5v15H6z" strokeLinejoin="round" />
+        <path d="M13 2v5h5" strokeLinejoin="round" />
+        <path d="M9 13h6M9 17h6" />
+      </svg>
+    ),
+    render: ({ onClose, projectId }) => <ArtifactsPanel onClose={onClose} projectId={projectId} />
   },
   {
     id: 'usage',
@@ -72,6 +86,15 @@ export function RightDock({
   const [width, setWidth] = useState(560)
   const [dragging, setDragging] = useState(false)
   const dragRef = useRef<{ x: number; w: number } | null>(null)
+
+  // An orchestrator's open_artifact pushes the dock open to the Artifacts panel; the panel itself
+  // selects the file (it listens to the same event).
+  useEffect(() => {
+    return api.onArtifactOpen(() => {
+      setMode('artifacts')
+      setOpen(true)
+    })
+  }, [])
 
   useEffect(() => {
     if (!dragging) return

@@ -12,7 +12,15 @@ import type {
 } from '@shared/ipc'
 import type { McEvent } from '@shared/events'
 import type { AgentStatus } from '@shared/agents/catalog'
-import type { ActivityEvent, Preset, Project, SessionRecord, UsageReport, WorktreeEntry } from '@shared/types'
+import type {
+  ActivityEvent,
+  ArtifactList,
+  Preset,
+  Project,
+  SessionRecord,
+  UsageReport,
+  WorktreeEntry
+} from '@shared/types'
 
 type HandoffResult = { ok: boolean; sessionId: string | null; summoned: boolean; message?: string }
 
@@ -57,6 +65,13 @@ const api = {
     ipcRenderer.on(IPC.mcEvent, handler)
     return () => ipcRenderer.removeListener(IPC.mcEvent, handler)
   },
+  onArtifactOpen: (cb: (path: string) => void): (() => void) => {
+    const h = (_: unknown, p: { path: string }): void => cb(p.path)
+    ipcRenderer.on(IPC.artifactOpen, h)
+    return () => {
+      ipcRenderer.removeListener(IPC.artifactOpen, h)
+    }
+  },
   listPresets: (): Promise<Preset[]> => ipcRenderer.invoke(IPC.presetList),
   listProjects: (): Promise<Project[]> => ipcRenderer.invoke(IPC.projectList),
   createProject: (name: string, rootPath: string): Promise<Project> =>
@@ -88,6 +103,8 @@ const api = {
   getSetting: (key: string): Promise<string | null> => ipcRenderer.invoke(IPC.settingsGet, key),
   setSetting: (key: string, value: string): Promise<void> => ipcRenderer.invoke(IPC.settingsSet, { key, value }),
   getUsageReport: (): Promise<UsageReport> => ipcRenderer.invoke(IPC.usageReport),
+  listArtifacts: (): Promise<ArtifactList> => ipcRenderer.invoke(IPC.artifactsList),
+  openPath: (path: string): Promise<string> => ipcRenderer.invoke(IPC.shellOpenPath, path),
   onUpdateReady: (cb: (msg: UpdateReadyMsg) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, msg: UpdateReadyMsg): void => cb(msg)
     ipcRenderer.on(IPC.updatesReady, handler)

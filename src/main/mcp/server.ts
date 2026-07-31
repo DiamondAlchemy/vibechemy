@@ -260,6 +260,26 @@ export function buildMcpServer(control: ControlPlane): McpServer {
     async ({ projectId, type, status }) => jsonText(control.listKnowledge({ projectId, type, status }))
   )
   server.registerTool(
+    'list_artifacts',
+    {
+      title: 'List artifacts',
+      description:
+        "List the user's agent-created files in their configured artifacts directory (pdf / image / html / other, newest first) — so you can reference or point them at what's been produced. Read-only; returns a message if no artifacts directory is set.",
+      inputSchema: {}
+    },
+    async () => jsonText(control.listArtifacts())
+  )
+  server.registerTool(
+    'open_artifact',
+    {
+      title: 'Open an artifact for the user',
+      description:
+        "Surface one artifact in Vibechemy's viewer so the user actually sees it (e.g. a report or screenshot you just produced). Pass `nameOrPath` — the file name from list_artifacts or its full path. Opens the right-side viewer to that file. Returns a message if it can't be found.",
+      inputSchema: { nameOrPath: z.string() }
+    },
+    async ({ nameOrPath }) => jsonText(control.openArtifact(nameOrPath))
+  )
+  server.registerTool(
     'get_standards',
     {
       title: 'Get standards',

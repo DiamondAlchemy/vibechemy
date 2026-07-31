@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, clipboard, dialog, ipcMain } from 'electron'
+import { app, BrowserWindow, Menu, clipboard, dialog, ipcMain, shell } from 'electron'
 import { existsSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { resolve } from 'node:path'
@@ -30,6 +30,7 @@ import { capturePane, hasSession, sendKeys, sendKeysNoEnter, cancelCopyMode } fr
 import type { SettingsStore } from '../settings/SettingsStore'
 import type { UsageService } from '../usage/UsageService'
 import type { AsrProvider } from '../voice/AsrProvider'
+import { type ArtifactsService, ARTIFACTS_DIR_KEY } from '../artifacts/ArtifactsService'
 import { planPinDeliveries } from '../pin/delivery'
 import { normalizePin, pinProjectId } from '@shared/pin'
 
@@ -54,6 +55,7 @@ export interface IpcDeps {
   settings: SettingsStore
   usage: UsageService
   voice: AsrProvider
+  artifacts: ArtifactsService
   control: ControlPlane
   notifyExit: (id: string) => void
   notifyProjects: () => void
@@ -74,6 +76,7 @@ export function registerIpc({
   settings,
   usage,
   voice,
+  artifacts,
   control,
   notifyExit,
   notifyProjects,
@@ -252,6 +255,7 @@ export function registerIpc({
   ipcMain.handle(IPC.settingsGet, (_event, key: string) => settings.get(key))
   const writeSetting = (key: string, value: string): void => {
     settings.set(key, value)
+    if (key === ARTIFACTS_DIR_KEY) artifacts.retarget() // re-point the fs-watch at the new dir
     // A usage-setting change (e.g. enabling the Claude Keychain card) must show up on the NEXT
     // poll, not after the 60s cache expires — bust it so the enable click reflects immediately.
     if (key.startsWith('usage.')) usage.invalidate()
@@ -321,4 +325,6 @@ export function registerIpc({
     const result = window ? await dialog.showOpenDialog(window, options) : await dialog.showOpenDialog(options)
     return result.canceled || result.filePaths.length === 0 ? null : result.filePaths[0]
   })
+  ipcMain.handle(IPC.artifactsList, () => artifacts.list())
+  ipcMain.handle(IPC.shellOpenPath, (_event, path: string) => shell.openPath(path))
 }

@@ -37,6 +37,7 @@ const SETTINGS_TABS = [
 type SettingsTab = (typeof SETTINGS_TABS)[number]['id']
 const SETTINGS_TAB_KEY = 'vibechemy.settingsTab'
 const isSettingsTab = (value: unknown): value is SettingsTab => SETTINGS_TABS.some((tab) => tab.id === value)
+const ARTIFACTS_DIR_KEY = 'artifacts.dir'
 
 export function Settings({
   onClose,
@@ -60,6 +61,8 @@ export function Settings({
   }, [])
   const [personalAgent, setPersonalAgent] = useState({ label: '', command: '', args: '' })
   const [loaded, setLoaded] = useState(false)
+  const [artifactsDir, setArtifactsDir] = useState<string | null>(null)
+  const [artifactsLoading, setArtifactsLoading] = useState(true)
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus | null>(null)
   const [voiceAutoSubmit, setVoiceAutoSubmit] = useState(false)
   const [voiceMessage, setVoiceMessage] = useState<string | null>(null)
@@ -83,6 +86,22 @@ export function Settings({
       setPersonalAgent({ label: label ?? '', command: command ?? '', args: args ?? '' })
       setLoaded(true)
     })
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  useEffect(() => {
+    let alive = true
+    api
+      .getSetting(ARTIFACTS_DIR_KEY)
+      .then((v) => {
+        if (alive) setArtifactsDir(v && v.trim() ? v : null)
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (alive) setArtifactsLoading(false)
+      })
     return () => {
       alive = false
     }
@@ -117,6 +136,18 @@ export function Settings({
     void api
       .setSetting(PA_KEYS[field], value)
       .catch((error) => console.error('[settings] personal agent save failed', error))
+  }, [])
+
+  const chooseArtifacts = useCallback(async () => {
+    const picked = await api.pickFolder()
+    if (!picked) return // user cancelled the dialog
+    await api.setSetting(ARTIFACTS_DIR_KEY, picked)
+    setArtifactsDir(picked)
+  }, [])
+
+  const clearArtifacts = useCallback(async () => {
+    await api.setSetting(ARTIFACTS_DIR_KEY, '')
+    setArtifactsDir(null)
   }, [])
 
   // Each category renders only while active; the controls keep their original labels and handlers.
@@ -162,6 +193,26 @@ export function Settings({
           </div>
         </>
       )}
+    </section>
+  )
+
+  const renderArtifacts = (): React.JSX.Element => (
+    <section className="settings-section">
+      <div className="settings-label">Artifacts directory</div>
+      <div className="settings-desc">Where agent-created files land — shown in the Artifacts panel.</div>
+      <div className="settings-vault">
+        <span className={`settings-vault-path${artifactsDir ? '' : ' empty'}`}>
+          {artifactsLoading ? 'Loading…' : (artifactsDir ?? 'No artifacts directory set')}
+        </span>
+        <button className="settings-pick" onClick={chooseArtifacts}>
+          Choose…
+        </button>
+        {artifactsDir && (
+          <button className="settings-clear" title="Clear the artifacts directory" onClick={clearArtifacts}>
+            Clear
+          </button>
+        )}
+      </div>
     </section>
   )
 
@@ -283,7 +334,12 @@ export function Settings({
               <div className="settings-pane-sub">{active.sub}</div>
             </div>
             {tab === 'agents' && renderAgents()}
-            {tab === 'personal-agent' && renderPersonalAgent()}
+            {tab === 'personal-agent' && (
+              <>
+                {renderPersonalAgent()}
+                {renderArtifacts()}
+              </>
+            )}
             {tab === 'appearance' && renderAppearance()}
             {tab === 'voice' && renderVoice()}
           </div>

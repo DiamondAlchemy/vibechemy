@@ -8,7 +8,15 @@ import {
   type AgentConfigSnapshot
 } from '@shared/agents/configOps'
 import { applyModelToArgs } from '@shared/agents/models'
-import type { KnowledgeEntry, KnowledgeType, StandardCategory, StandardEntry, TaskState } from '@shared/types'
+import type {
+  ArtifactFile,
+  KnowledgeEntry,
+  KnowledgeType,
+  StandardCategory,
+  StandardEntry,
+  TaskState
+} from '@shared/types'
+import { resolveArtifact } from '@shared/artifacts/resolve'
 import { buildDigest, startOfDay } from '../activity/digest'
 import type { ActivityLog } from '../activity/ActivityLog'
 import type { MergeResult, DiffResult, MergeService } from '../git/MergeService'
@@ -21,6 +29,7 @@ import { isWorktreeDirty } from '../sessions/worktree'
 import { capturePane, sendKeys } from '../sessions/tmux'
 import type { SettingsStore } from '../settings/SettingsStore'
 import type { StandardsStore } from '../standards/StandardsStore'
+import type { ArtifactsService } from '../artifacts/ArtifactsService'
 import { ControlEventHub, type AwaitOptions, type AwaitResult, type ControlEventInput } from './ControlEventHub'
 import { runWorkspacePrecheck } from './precheck'
 import type { PrecheckResult } from '@shared/ipc'
@@ -63,7 +72,9 @@ export class ControlPlane {
     private knowledge?: KnowledgeStore,
     private standards?: StandardsStore,
     private settings?: SettingsStore,
-    private eventHub: ControlEventHub = new ControlEventHub()
+    private eventHub: ControlEventHub = new ControlEventHub(),
+    private artifacts?: ArtifactsService,
+    private notifyOpenArtifact?: (path: string) => void
   ) {}
 
   private recordEvent(event: ControlEventInput): void {
@@ -174,6 +185,23 @@ export class ControlPlane {
 
   listKnowledge(options: { projectId?: string | null; type?: KnowledgeType; status?: string } = {}): KnowledgeEntry[] {
     return this.knowledge ? this.knowledge.list(options) : []
+  }
+
+  /** List the user's agent-created artifacts (read-only) — for the list_artifacts MCP tool. */
+  listArtifacts(): { ok: boolean; message?: string; dir?: string | null; files?: ArtifactFile[] } {
+    if (!this.artifacts) return { ok: false, message: 'Artifacts unavailable (no artifacts directory wired).' }
+    const { dir, files } = this.artifacts.list()
+    return { ok: true, dir, files }
+  }
+
+  /** Open one artifact in the Vibechemy viewer for the user — the open_artifact MCP tool.
+   *  Resolves by name (from list_artifacts) or full path, then asks the renderer to surface it. */
+  openArtifact(nameOrPath: string): { ok: boolean; message?: string; path?: string } {
+    if (!this.artifacts) return { ok: false, message: 'Artifacts unavailable (no artifacts directory wired).' }
+    const match = resolveArtifact(this.artifacts.list().files, nameOrPath)
+    if (!match) return { ok: false, message: `No artifact matching "${nameOrPath}" — use list_artifacts for names.` }
+    this.notifyOpenArtifact?.(match.path)
+    return { ok: true, path: match.path }
   }
 
   getStandards(projectId?: string | null): {
