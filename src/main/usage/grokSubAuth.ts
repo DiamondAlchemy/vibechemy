@@ -10,13 +10,13 @@
 import { readFileSync, writeFileSync, renameSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { planGrokToken } from '@shared/auth/grokRotation'
 
 const GROK_AUTH = join(homedir(), '.grok', 'auth.json')
 const XAI_TOKEN_URL = 'https://auth.x.ai/oauth2/token'
 // Public OAuth client id of the official grok CLI (embedded in the binary; also the auth.json
 // session-key prefix). Not a secret. Validated against the stored oidc_client_id at read time.
 const XAI_CLIENT_ID = 'b1a00492-073a-47ea-816f-4c329264a828'
-const SKEW_S = 120 // refresh when <2 min of life remains
 
 interface GrokSession {
   storeKey: string // the "<issuer>::<client>" key the session lives under in auth.json
@@ -99,14 +99,23 @@ async function refreshGrok(session: GrokSession): Promise<string | null> {
  * A valid SuperGrok Bearer, or null if not signed in. Uses the grok CLI's token (refreshing it
  * if it's within the skew window).
  */
-export async function grokSubToken(): Promise<string | null> {
+export async function grokSubToken(opts: { allowRotation?: boolean } = {}): Promise<string | null> {
   const session = readGrokSession()
   if (session) {
-    if (jwtExp(session.access) - Date.now() / 1000 > SKEW_S) return session.access
-    const fresh = await refreshGrok(session)
-    if (fresh) return fresh
-    // Refresh failed — the current token may still have a few seconds; better than nothing.
-    if (jwtExp(session.access) - Date.now() / 1000 > 0) return session.access
+    // Rotation REWRITES ~/.grok/auth.json, which belongs to the grok CLI, so it is opt-in and
+    // defaults to off: an unset setting must never be read as consent to write.
+    const plan = planGrokToken({
+      accessExpSec: jwtExp(session.access),
+      nowMs: Date.now(),
+      allowRotation: opts.allowRotation === true
+    })
+    if (plan === 'use-current') return session.access
+    if (plan === 'rotate') {
+      const fresh = await refreshGrok(session)
+      if (fresh) return fresh
+      // Refresh failed — the current token may still have a few seconds; better than nothing.
+      if (jwtExp(session.access) - Date.now() / 1000 > 0) return session.access
+    }
   }
   return null
 }

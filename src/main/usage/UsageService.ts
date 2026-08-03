@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import type { UsageReport, UsageRow } from '@shared/types'
 import type { UsageAdapter, UsageDeps } from './types'
 import { grokSubToken } from './grokSubAuth'
+import { GROK_ROTATION_OPT_IN_KEY } from '@shared/auth/grokRotation'
 import { findKimiBin } from './kimiBin'
 import { claudeAdapter } from './adapters/claude'
 import { codexAdapter } from './adapters/codex'
@@ -104,7 +105,8 @@ export class UsageService {
       fetch: globalThis.fetch.bind(globalThis),
       spawn: nodeSpawn,
       execFile: nodeExecFile,
-      grokSubToken,
+      // Consent travels with the call: rotation writes to the grok CLI's own file.
+      grokSubToken: () => grokSubToken({ allowRotation: getSetting(GROK_ROTATION_OPT_IN_KEY) === 'on' }),
       readOpencodeAuth,
       readKimiAuth,
       kimiBin: findKimiBin,

@@ -55,9 +55,9 @@ inverts that: you brief one orchestrator, and it does the carrying.
   volume. On flat-rate plans your scarce frontier quota buys decisions instead of boilerplate; on
   metered keys it's the same arithmetic in dollars. A per-agent usage panel shows what's left on
   each plan, so you can see where the burn actually goes.
-- **Only the orchestrator holds the wheel.** Plain workers never inherit the control plane — they
-  cannot spawn, merge, or deploy. Nothing happens behind your back, because only the seat you
-  summoned has the tools.
+- **Only the orchestrator gets the tools.** A plain worker pane is just the CLI — it is not given
+  the control plane, so it cannot spawn, merge, or deploy itself. Treat that as a division of
+  labour rather than a sandbox: see the boundaries section below for what it is not.
 - **Every agent gets its own git worktree.** Isolated worktree and branch per agent. They can't
   step on each other, and they can't touch `main`.
 - **You can see all of them working.** Real `tmux`-backed terminals on a freeform canvas — watch,
@@ -74,8 +74,9 @@ Being precise about this, because the line matters:
   box it has no opinion about your vendors.
 - **It doesn't push, deploy, or merge without you.** Merges are local and reviewed. Deploys run
   only a recipe you wrote, only when you say so.
-- **It doesn't proxy your credentials.** BYOK always: Vibechemy drives the CLIs you are already
-  signed into. It detects that you are signed in, and never stores, forwards, or sees a token.
+- **It doesn't proxy your credentials to run agents.** BYOK always: Vibechemy drives the CLIs you
+  are already signed into, and each one authenticates itself. The optional usage panel is the one
+  exception — see the boundaries section below for exactly what it reads.
 
 ## Why this exists
 
@@ -171,10 +172,16 @@ teaches it the protocol. The Personal Agent slot is wired the same way.
 
 Two deliberate boundaries:
 
-- **Workers never inherit the control plane.** Only summoned orchestrators get the tools; a plain
-  worker pane is just the CLI, so it can never spawn or merge anything itself.
-- **Bring your own keys.** The app never touches your credentials — install and sign in to each CLI
-  yourself; Vibechemy only detects the result and lights up the roster.
+- **Workers are not given the control plane.** Only summoned orchestrators get the tools, so a
+  plain worker pane cannot spawn or merge anything itself. This is not isolation, and it is worth
+  being precise about: every pane runs on one shared `tmux` server and inherits `$TMUX`, so a
+  worker that went off-script could type into an orchestrator's pane — which does have the tools.
+  Run workers you are willing to run; do not treat the split as a security boundary.
+- **Bring your own keys.** Vibechemy never proxies a credential to run an agent — you install and
+  sign in to each CLI yourself, and it detects the result. The **usage panel** is the exception:
+  to show how much quota you have left, some providers require reading a token from disk and
+  sending it to that vendor's own API. Anything that reads the macOS Keychain, or writes back to a
+  CLI's credential file, is off until you switch it on.
 
 Power-user path: any external MCP client can drive the same control plane directly — point it at
 `http://127.0.0.1:4880/mcp` with `Authorization: Bearer <contents of mcp-token>`.
