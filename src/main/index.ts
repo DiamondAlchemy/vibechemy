@@ -203,13 +203,13 @@ app.whenReady().then(async () => {
     console.error('[orchestrator] Claude setup failed:', error)
   }
   try {
-    extraPresets.push(codexOrchestratorPreset(mcpToken, mcpUrl))
+    extraPresets.push(codexOrchestratorPreset(mcpTokenPath, mcpUrl))
   } catch (error) {
     console.error('[orchestrator] Codex setup failed:', error)
   }
   try {
     const config = writeOpencodeOrchestratorConfig(mcBaseDir, mcpUrl, identity.orchestratorDirName)
-    extraPresets.push(...opencodeOrchestratorPresets(mcpToken, config.config))
+    extraPresets.push(...opencodeOrchestratorPresets(mcpTokenPath, config.config))
   } catch (error) {
     console.error('[orchestrator] OpenCode setup failed:', error)
   }
@@ -246,7 +246,7 @@ app.whenReady().then(async () => {
       )
     }
     presets.replaceFamily('orchestrator-codex', [
-      codexOrchestratorPreset(mcpToken, mcpUrl, {
+      codexOrchestratorPreset(mcpTokenPath, mcpUrl, {
         model: modelSetting('codex', 'lead'),
         effort: effortSetting('codex', 'lead')
       })

@@ -1,4 +1,8 @@
 import { describe, it, expect } from 'vitest'
+import { execFileSync } from 'node:child_process'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { PresetRegistry } from './PresetRegistry'
 import type { Preset } from '@shared/types'
 import { PERSONAL_AGENT_PRESET_ID } from '@shared/agents/personalAgent'
@@ -32,6 +36,34 @@ describe('PresetRegistry', () => {
   it('prefixes env and shell-quotes values containing spaces', () => {
     const p = reg.get('oc-glm')!
     expect(reg.buildLaunchCommand(p)).toBe("env OPENCODE_THEME='dark mode' opencode -m zai/glm-4.6")
+  })
+
+  it('reads an envFromFile secret at launch instead of inlining it into argv', () => {
+    const tokenFile = mkdtempSync(join(tmpdir(), 'mc-tok-'))
+    const path = join(tokenFile, 'mcp-token')
+    writeFileSync(path, 'deadbeefcafe\n', { mode: 0o600 })
+    const p: Preset = {
+      id: 'orchestrator-codex',
+      name: 'Codex',
+      command: 'codex',
+      args: ['-c', 'mcp_servers.vibechemy.url="http://127.0.0.1:4880/mcp"'],
+      env: {},
+      envFromFile: { MCP_VIBECHEMY_API_KEY: path }
+    }
+    const command = PresetRegistry.from([p]).buildLaunchCommand(p)
+    // The command string becomes tmux's argv, and the tmux server inherits the argv of the client
+    // that starts it — so a bearer inlined here is readable via `ps` for the app's whole life.
+    expect(command).not.toContain('deadbeefcafe')
+    expect(command).toContain(path)
+
+    // ...and it must still actually reach the process. Run the generated line through a real sh,
+    // substituting a printenv for the CLI, and confirm the value arrives.
+    const probe = command.replace(
+      "codex -c 'mcp_servers.vibechemy.url=\"http://127.0.0.1:4880/mcp\"'",
+      'printenv MCP_VIBECHEMY_API_KEY'
+    )
+    expect(execFileSync('sh', ['-c', probe]).toString().trim()).toBe('deadbeefcafe')
+    rmSync(tokenFile, { recursive: true, force: true })
   })
 })
 
