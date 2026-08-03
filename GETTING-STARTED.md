@@ -56,6 +56,32 @@ tmux -V
 
 Do not continue until each command succeeds and `node --version` reports a supported version.
 
+### On Linux
+
+Linux is not a supported target and there is no packaged build for it, but the from-source path
+below does work. Substitute the macOS-specific prerequisites:
+
+| macOS | Linux |
+|---|---|
+| Xcode Command Line Tools | a C/C++ toolchain — `build-essential` on Debian/Ubuntu, `@development-tools` on Fedora |
+| Homebrew | your distribution's package manager |
+| `brew install tmux` | `apt install tmux` / `dnf install tmux` |
+| `pbcopy` (built in) | `wl-copy` (Wayland) or `xclip` (X11) — see below |
+
+Git, Node, npm and Python 3 are the same. Verify with the same commands, minus `xcode-select -p`.
+
+One extra step: install a clipboard tool, or drag-selecting text in a pane will not reach the
+system clipboard. Vibechemy picks `wl-copy`, `xclip` or `xsel` automatically based on your session,
+and skips the binding entirely when none is present:
+
+```bash
+sudo apt install wl-clipboard   # Wayland
+sudo apt install xclip          # X11
+```
+
+Verified on Ubuntu 24.04 with tmux 3.4. Voice dictation resolves on Linux as well — `sherpa-onnx`
+publishes a `linux-x64` build — but has not been tested there.
+
 ## 2. Install and launch Vibechemy
 
 ### Fast path: the packaged app (macOS, Apple Silicon)
@@ -115,6 +141,11 @@ On first development launch, Vibechemy creates:
 
 A packaged build uses `~/Library/Application Support/vibechemy/`, `~/.vibechemy/orchestrator/`, and
 MCP port 4880 instead. Development mode uses port 4881 so both identities can coexist.
+
+On Linux the same files live under `~/.config/vibechemy-dev/` (and `~/.config/vibechemy/` for a
+packaged build); `~/.vibechemy/` is the same on both platforms. Linux also needs a one-time step
+before `npm run dev` will start — see [Electron refuses to start on
+Linux](#electron-refuses-to-start-on-linux-suid-sandbox) in troubleshooting.
 
 ### Updating Vibechemy
 
@@ -555,6 +586,29 @@ tmux -V
 
 Quit and relaunch Vibechemy after the command succeeds.
 
+### Electron refuses to start on Linux (SUID sandbox)
+
+`npm run dev` exits immediately with:
+
+```
+The SUID sandbox helper binary was found, but is not configured correctly. Rather than run
+without sandboxing I'm aborting now.
+```
+
+Electron ships `chrome-sandbox` owned by the installing user, but the kernel requires it to be
+setuid root. Fix it once per `npm ci`:
+
+```bash
+sudo chown root:root node_modules/electron/dist/chrome-sandbox
+sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
+```
+
+**Do not pass `--no-sandbox` instead.** It is the first suggestion you will find online, and it is
+the wrong trade here: Vibechemy's whole purpose is running other people's coding agents, and the
+Chromium sandbox is a meaningful part of what contains the renderer. Fix the binary's ownership.
+
+Reinstalling dependencies resets the ownership, so expect to repeat this after `npm ci`.
+
 ### A native module reports `NODE_MODULE_VERSION`
 
 The native modules must be built for the process that loads them. For Vibechemy/Electron, run:
@@ -571,7 +625,8 @@ npm run rebuild:node
 npm test
 ```
 
-If compilation fails before the ABI step, re-check `xcode-select -p` and `python3 --version`.
+If compilation fails before the ABI step, re-check `xcode-select -p` and `python3 --version` — or,
+on Linux, that a C/C++ toolchain (`build-essential` or equivalent) and `python3` are installed.
 
 ### A CLI works in Terminal but Vibechemy cannot find it
 
@@ -583,7 +638,8 @@ Homebrew and `~/.local/bin` locations. Verify that the binary is visible to a lo
 /bin/zsh -ilc 'command -v claude'
 ```
 
-Replace `claude` with the missing binary. If that command fails, add the CLI's install directory to
+Replace `claude` with the missing binary. On Linux, use your own login shell instead — usually
+`/bin/bash -ilc 'command -v claude'`. If that command fails, add the CLI's install directory to
 your login-shell `PATH`, open a new Terminal, verify it again, and restart Vibechemy. For a custom
 agent or Personal Agent, you can instead enter the binary's absolute path in its **Command** field.
 
