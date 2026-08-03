@@ -4,6 +4,16 @@ import { promisify } from 'node:util'
 const pexec = promisify(execFile)
 
 /**
+ * execFile buffers stdout in memory and REJECTS with ENOBUFS once it passes maxBuffer, whose
+ * default is 1 MB. A pane capture is the one tmux call that routinely exceeds that: the pane
+ * History button asks for 5000 lines, and a wide pane full of coloured agent output carries far
+ * more than 200 bytes a line. The rejection is swallowed by the History handler's `.catch(() => '')`,
+ * so the operator sees "(no scrollback captured yet)" on exactly the busiest panes — the ones with
+ * the most worth reading. 32 MB comfortably covers a full-width 5000-line capture.
+ */
+export const CAPTURE_MAX_BUFFER = 32 * 1024 * 1024
+
+/**
  * Vibechemy runs its own tmux server on a dedicated socket so our mouse,
  * copy-mode and clipboard config never touches the user's personal tmux (the
  * default socket). Every tmux invocation in the app — including PtyBridge's
@@ -135,7 +145,9 @@ export async function sendKeysNoEnter(name: string, text: string): Promise<void>
 /** Capture a session pane's recent visible output (incl. `lines` of scrollback) — used
  *  by the control plane so the orchestrator can read a worker's own narrative. */
 export async function capturePane(name: string, lines = 200): Promise<string> {
-  const { stdout } = await pexec('tmux', t('capture-pane', '-t', name, '-p', '-S', `-${lines}`))
+  const { stdout } = await pexec('tmux', t('capture-pane', '-t', name, '-p', '-S', `-${lines}`), {
+    maxBuffer: CAPTURE_MAX_BUFFER
+  })
   return stdout
 }
 
