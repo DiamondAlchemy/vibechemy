@@ -8,7 +8,8 @@ import {
   sendKeys,
   sendKeysNoEnter,
   capturePane,
-  tmuxSocket
+  tmuxSocket,
+  resolveClipboardCommand
 } from './tmux'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
@@ -75,7 +76,13 @@ describe('tmux helpers (integration)', () => {
     expect(hist.trim()).toBe('history-limit 50000')
     const { stdout: binds } = await pexec('tmux', ['-L', tmuxSocket(), 'list-keys'])
     expect(binds).toContain('WheelUpPane')
-    expect(binds).toContain('copy-pipe pbcopy')
+    // The clipboard tool is platform-dependent (pbcopy on macOS, wl-copy/xclip/xsel on Linux) and
+    // may be absent entirely, in which case the binding is deliberately not installed.
+    // list-keys double-quotes any command containing spaces ("xclip -selection clipboard") but
+    // leaves a bare one alone (pbcopy), so compare with quotes stripped.
+    const clipboard = await resolveClipboardCommand()
+    if (clipboard) expect(binds.replace(/"/g, '')).toContain(`copy-pipe ${clipboard}`)
+    else expect(binds).not.toContain('MouseDragEnd1Pane')
     // A scrolled-back pane must exit copy-mode instead of trapping the next click.
     expect(binds).toMatch(/copy-mode\s+MouseDown1Pane\s+send-keys -X cancel/)
     const { stdout: clip } = await pexec('tmux', ['-L', tmuxSocket(), 'show-options', '-g', 'set-clipboard'])

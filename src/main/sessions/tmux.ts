@@ -28,6 +28,56 @@ function t(...args: string[]): string[] {
   return ['-L', SOCKET, ...args]
 }
 
+/** True if `name` resolves on PATH. `name` is always one of our own literals, never user input. */
+async function binaryExists(name: string): Promise<boolean> {
+  try {
+    await pexec('sh', ['-c', `command -v ${name}`])
+    return true
+  } catch {
+    return false
+  }
+}
+
+let clipboardCommand: string | null | undefined
+
+/**
+ * The command tmux's copy-pipe binding pipes a selection into.
+ *
+ * macOS has pbcopy and nothing else is needed. On Linux the right tool depends on the session
+ * (Wayland vs X11) and on what the user actually installed, so resolve once at boot instead of
+ * baking in a binary that may not exist — a missing one makes copy-pipe fail silently, which
+ * presents as "drag-select just doesn't copy" with nothing in any log.
+ *
+ * Returns null when nothing suitable is installed; the caller then skips the copy-pipe bindings
+ * entirely rather than installing a binding that cannot work.
+ */
+export async function resolveClipboardCommand(): Promise<string | null> {
+  if (clipboardCommand !== undefined) return clipboardCommand
+  if (process.platform === 'darwin') {
+    clipboardCommand = 'pbcopy'
+    return clipboardCommand
+  }
+  // Prefer the tool matching the session. wl-copy under X11 (or xclip under Wayland without
+  // XWayland) exits non-zero at COPY time, long after this probe, so session type has to decide.
+  const wayland = !!process.env.WAYLAND_DISPLAY
+  const candidates = wayland
+    ? ['wl-copy', 'xclip -selection clipboard', 'xsel --clipboard --input']
+    : ['xclip -selection clipboard', 'xsel --clipboard --input', 'wl-copy']
+  for (const candidate of candidates) {
+    if (await binaryExists(candidate.split(' ')[0])) {
+      clipboardCommand = candidate
+      return clipboardCommand
+    }
+  }
+  clipboardCommand = null
+  return clipboardCommand
+}
+
+/** Test seam: forget the cached probe so a test can exercise a different platform/session. */
+export function resetClipboardCommand(): void {
+  clipboardCommand = undefined
+}
+
 export async function hasTmux(): Promise<boolean> {
   try {
     // Intentionally no -L: just checks the binary exists, not our server.
@@ -72,8 +122,14 @@ export async function configureServer(): Promise<void> {
   // scrolled back EXITS copy-mode to the live prompt so the next click or keystroke is not trapped.
   // Drag-select still works: the mousedown cancels, the drag re-enters copy-mode selection via the
   // root MouseDrag1Pane default, and release copy-pipes.
+  const clipboard = await resolveClipboardCommand()
   for (const table of ['copy-mode', 'copy-mode-vi']) {
-    await pexec('tmux', t('bind-key', '-T', table, 'MouseDragEnd1Pane', 'send-keys', '-X', 'copy-pipe', 'pbcopy'))
+    // Without a clipboard tool, bind copy-pipe to nothing: a binding pointing at a missing binary
+    // fails silently on every drag. The selection still highlights, and the renderer's own
+    // clipboard path (TerminalPane's onSelectionChange → Electron clipboard) still works.
+    if (clipboard) {
+      await pexec('tmux', t('bind-key', '-T', table, 'MouseDragEnd1Pane', 'send-keys', '-X', 'copy-pipe', clipboard))
+    }
     await pexec('tmux', t('bind-key', '-T', table, 'MouseDown1Pane', 'send-keys', '-X', 'cancel'))
   }
 }
