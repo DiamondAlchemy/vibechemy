@@ -596,16 +596,28 @@ without sandboxing I'm aborting now.
 ```
 
 Electron ships `chrome-sandbox` owned by the installing user, but the kernel requires it to be
-setuid root. Fix it once per `npm ci`:
+setuid root. Fix it once per `npm ci` — two separate commands, because chaining them with `&&`
+means a second `sudo` password prompt can silently skip the `chmod`:
 
 ```bash
 sudo chown root:root node_modules/electron/dist/chrome-sandbox
 sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
 ```
 
+Verify before retrying — a half-applied fix looks like no fix at all:
+
+```bash
+stat -c '%U %G %a' node_modules/electron/dist/chrome-sandbox   # expect: root root 4755
+```
+
+`ls -l` should show `-rwsr-xr-x`, with an `s` rather than an `x` in the owner's execute slot. If
+`chown` succeeded but `chmod` did not, Electron still refuses to start with the same message.
+
 **Do not pass `--no-sandbox` instead.** It is the first suggestion you will find online, and it is
-the wrong trade here: Vibechemy's whole purpose is running other people's coding agents, and the
-Chromium sandbox is a meaningful part of what contains the renderer. Fix the binary's ownership.
+the wrong trade: it disables sandboxing for *every* child process — GPU and utility processes
+included — to work around a one-line file-permission problem on your own machine, and it leaves you
+running a materially different configuration from the macOS build the app is developed against.
+Fix the file mode; it costs nothing.
 
 Reinstalling dependencies resets the ownership, so expect to repeat this after `npm ci`.
 
