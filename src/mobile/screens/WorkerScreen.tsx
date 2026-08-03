@@ -22,9 +22,19 @@ export function WorkerScreen({
     setSnapshot(await source.readOutput(workerId))
   }, [source, workerId])
 
+  // Read directly rather than calling refresh(), so the result can be dropped when the effect is
+  // torn down: without the guard a slow read that resolves after the worker changed (or after
+  // unmount) writes another worker's transcript into this pane.
   useEffect(() => {
-    void refresh()
-  }, [refresh])
+    let cancelled = false
+    void (async () => {
+      const next = await source.readOutput(workerId)
+      if (!cancelled) setSnapshot(next)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [source, workerId])
 
   const send = async (): Promise<void> => {
     if (!draft.trim() || busy) return

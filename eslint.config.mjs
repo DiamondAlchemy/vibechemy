@@ -17,6 +17,15 @@ export default defineConfig(
       }
     }
   },
+  // The launcher is dependency-free plain ESM JavaScript on purpose (it runs under `npx` before
+  // anything is installed), so the TypeScript-only rules from the recommended set do not apply to
+  // it. Without this, explicit-function-return-type fails every function in launcher/*.mjs.
+  {
+    files: ['**/*.mjs'],
+    rules: {
+      '@typescript-eslint/explicit-function-return-type': 'off'
+    }
+  },
   {
     files: ['**/*.{ts,tsx}'],
     plugins: {

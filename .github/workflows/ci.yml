@@ -1,0 +1,52 @@
+# Verification gate: lint, typecheck and the unit suite on every push and pull request.
+#
+# Runs on macos-14 because the suite is not pure — tmux.test.ts, PtyBridge.test.ts and
+# e2e.test.ts drive a real tmux server on the app's private socket, and better-sqlite3 /
+# node-pty are compiled native modules. macOS is also the platform the app targets, so a
+# green run here means the same thing a green run on a maintainer's machine means.
+#
+# `pretest` rebuilds the natives against the Node ABI (not Electron's) — that is what the
+# vitest `pool: forks` setup expects, so `npm test` is invoked directly rather than through
+# any Electron wrapper.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A new push to a PR makes the in-flight run obsolete — cancel it rather than paying for both.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # tmux is a hard runtime dependency of the session layer; the integration tests skip
+      # nothing and will fail outright without it.
+      - name: Install tmux
+        run: brew install tmux
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
