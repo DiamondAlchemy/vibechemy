@@ -1,5 +1,5 @@
 import http from 'node:http'
-import { randomBytes, randomUUID } from 'node:crypto'
+import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
 import { chmodSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
@@ -29,6 +29,9 @@ export function loadOrCreateToken(file: string): string {
 function jsonText(value: unknown): { content: { type: 'text'; text: string }[] } {
   return { content: [{ type: 'text', text: JSON.stringify(value, null, 2) }] }
 }
+
+/** Upper bound for read_output — matches the pane History capture, well under tmux's history-limit. */
+export const MAX_READ_OUTPUT_LINES = 5000
 
 export function buildMcpServer(control: ControlPlane): McpServer {
   const server = new McpServer({ name: PRODUCT_IDENTITY.mcpServerName, version: '0.1.0' })
@@ -65,19 +68,25 @@ export function buildMcpServer(control: ControlPlane): McpServer {
     'list_workers',
     {
       title: 'List workers',
-      description: 'List running or detached worker sessions.',
+      // `null` reached ControlPlane as "only workers with NO project" — the opposite of the
+      // "no filter" a caller reaching for null intends, so it silently returned a subset. Null is
+      // still accepted (agents already in the wild send it; rejecting would break them mid-run)
+      // but now means the same as omitting it.
+      description: 'List running or detached worker sessions. Omit projectId, or pass null, for all projects.',
       inputSchema: { projectId: z.string().nullable().optional() }
     },
-    async ({ projectId }) => jsonText(control.listWorkers(projectId))
+    async ({ projectId }) => jsonText(control.listWorkers(projectId ?? undefined))
   )
   server.registerTool(
     'list_leftovers',
     {
       title: 'List leftover worktrees',
-      description: 'List closed isolated workers whose worktrees remain on disk.',
+      description:
+        'List closed isolated workers whose worktrees remain on disk. Omit projectId, or pass null, for all projects.',
+      // See list_workers: `null` meant "unscoped workers only", never "no filter".
       inputSchema: { projectId: z.string().nullable().optional() }
     },
-    async ({ projectId }) => jsonText(await control.listLeftovers(projectId))
+    async ({ projectId }) => jsonText(await control.listLeftovers(projectId ?? undefined))
   )
   server.registerTool(
     'get_agent_config',
@@ -175,7 +184,10 @@ export function buildMcpServer(control: ControlPlane): McpServer {
     {
       title: 'Read worker output',
       description: 'Read recent terminal output from a worker.',
-      inputSchema: { workerId: z.string(), lines: z.number().optional() }
+      // `lines` is interpolated into tmux's `capture-pane -S -<lines>`; a float, a negative or a
+      // NaN produces an argument tmux rejects, surfacing as an opaque spawn failure rather than a
+      // usable error. Bound it to what a pane can actually hold.
+      inputSchema: { workerId: z.string(), lines: z.number().int().min(1).max(MAX_READ_OUTPUT_LINES).optional() }
     },
     async ({ workerId, lines }) => jsonText(await control.readOutput(workerId, lines))
   )
@@ -330,6 +342,79 @@ export interface McpHandle {
   stop: () => Promise<void>
 }
 
+/**
+ * Constant-time bearer comparison. `!==` on a secret returns as soon as two bytes differ, so the
+ * response time leaks how long a shared prefix is — enough to recover the token byte-by-byte from
+ * a process that can time requests (every agent pane can). The token's LENGTH is not a secret (it
+ * is always 64 hex characters), so an early length check before timingSafeEqual is safe; the
+ * function throws on mismatched lengths otherwise.
+ */
+export function tokenMatches(presented: string, expected: string): boolean {
+  const a = Buffer.from(presented, 'utf8')
+  const b = Buffer.from(expected, 'utf8')
+  if (a.length !== b.length) return false
+  return timingSafeEqual(a, b)
+}
+
+/** Authorities that mean "this machine" — the only ones the control plane will answer to. */
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '[::1]'])
+
+/**
+ * DNS-rebinding guard. The server binds loopback, but that only controls which interface accepts
+ * the connection — a browser on this machine can be handed a hostname that resolves to 127.0.0.1
+ * and will happily connect. The Host header is what separates "a client that meant to reach us"
+ * from "a page that was pointed at us", so require a loopback authority.
+ */
+export function hostAllowed(hostHeader: string | undefined): boolean {
+  if (!hostHeader) return false
+  const host = hostHeader.trim().toLowerCase()
+  // Strip the port. IPv6 literals are bracketed, so a colon only separates the port when it
+  // comes after the closing bracket.
+  const colon = host.lastIndexOf(':')
+  const bare = colon !== -1 && colon > host.lastIndexOf(']') ? host.slice(0, colon) : host
+  return LOOPBACK_HOSTS.has(bare)
+}
+
+/**
+ * The agent CLIs are not browsers and send no Origin, so an absent Origin is the normal case.
+ * A PRESENT Origin means a browser sent this, and it may only be one of our own.
+ */
+export function originAllowed(origin: string | undefined): boolean {
+  if (!origin) return true
+  try {
+    return LOOPBACK_HOSTS.has(new URL(origin).hostname.toLowerCase())
+  } catch {
+    return false // 'null' and other opaque origins are not loopback
+  }
+}
+
+/**
+ * Hard cap on a control-plane request body. The largest legitimate payload is a task prompt or a
+ * recorded learning — kilobytes. Without a cap, any holder of the token (including a wedged
+ * orchestrator) can stream until the main process dies, taking every live terminal with it.
+ */
+export const MAX_BODY_BYTES = 4 * 1024 * 1024
+
+class BodyTooLarge extends Error {}
+
+/**
+ * Read a request body with a size cap, decoding ONCE over the joined buffer. Accumulating
+ * `raw += chunk` decodes each chunk independently, so any multi-byte character that straddles a
+ * chunk boundary (~64 KB) is destroyed — a non-ASCII task prompt or learning silently arrives
+ * corrupted, or fails to parse at all.
+ */
+async function readBody(request: http.IncomingMessage): Promise<string> {
+  const chunks: Buffer[] = []
+  let total = 0
+  for await (const chunk of request) {
+    const buffer = chunk as Buffer
+    total += buffer.length
+    if (total > MAX_BODY_BYTES) throw new BodyTooLarge()
+    chunks.push(buffer)
+  }
+  return Buffer.concat(chunks).toString('utf8')
+}
+
 export function startMcpServer(options: {
   cp: ControlPlane
   token: string
@@ -346,8 +431,14 @@ export function startMcpServer(options: {
       const authorization = (request.headers['authorization'] as string | undefined) ?? ''
       const apiKey = (request.headers['x-api-key'] as string | undefined) ?? ''
       const presented = authorization.replace(/^Bearer\s+/i, '').trim() || apiKey.trim()
-      if (presented !== options.token) {
+      if (!tokenMatches(presented, options.token)) {
         response.writeHead(401).end('unauthorized')
+        return
+      }
+      // Checked AFTER the bearer so an unauthenticated prober learns nothing about which
+      // authorities we accept, and BEFORE any handler so a rebound browser reaches no tool.
+      if (!hostAllowed(request.headers.host) || !originAllowed(request.headers.origin)) {
+        response.writeHead(403).end('forbidden')
         return
       }
       if ((request.url ?? '').split('?')[0] !== '/mcp') {
@@ -356,8 +447,22 @@ export function startMcpServer(options: {
       }
 
       if (request.method === 'POST') {
-        let raw = ''
-        for await (const chunk of request) raw += chunk
+        let raw: string
+        try {
+          raw = await readBody(request)
+        } catch (error) {
+          if (error instanceof BodyTooLarge) {
+            // Connection: close is load-bearing. Aborting the `for await` destroys a
+            // PARTIALLY-CONSUMED IncomingMessage, which corrupts HTTP/1.1 framing on that socket
+            // and Node does not heal it. Left keep-alive, the next request on the same connection
+            // hangs forever — and the MCP client reuses one connection for a session's whole life,
+            // so a single oversized tool argument would silently wedge that orchestrator's control
+            // plane with no error surfaced. Forcing a close makes the client reconnect cleanly.
+            response.writeHead(413, { connection: 'close' }).end('payload too large')
+            return
+          }
+          throw error
+        }
         const body = raw ? JSON.parse(raw) : undefined
         const sessionId = request.headers['mcp-session-id'] as string | undefined
         let transport = sessionId ? transports[sessionId] : undefined
