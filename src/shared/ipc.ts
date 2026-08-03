@@ -45,6 +45,9 @@ export const IPC = {
   settingsSet: 'settings:set',
   usageReport: 'usage:report', // per-agent remaining plan usage (quota left) → UsageReport
   artifactsList: 'artifacts:list',
+  artifactShare: 'artifacts:share', // mint a short-lived secret link for ONE artifact → ArtifactShare
+  artifactShareRevoke: 'artifacts:share-revoke', // kill a link immediately
+  artifactSharesActive: 'artifacts:shares-active', // live links (for the panel) → ArtifactShare[]
   artifactOpen: 'artifacts:open', // main → renderer: open this artifact path in the viewer
   shellOpenPath: 'shell:open-path',
   updatesReady: 'updates:ready', // main → renderer: an update finished downloading (UpdateReadyMsg)
@@ -87,6 +90,18 @@ export interface MergeResult {
   conflict?: boolean
   message: string
   mergedInto?: string
+}
+
+/** A live share link for one artifact. The token rides inside `url`; the QR encodes the same. */
+export interface ArtifactShare {
+  ok: boolean
+  token?: string
+  url?: string
+  /** data: URL of a QR image for the link — the phone path is "point camera, done". */
+  qr?: string
+  filename?: string
+  expiresAt?: number
+  message?: string
 }
 
 /** Sent when the auto-updater has a downloaded update staged and ready to apply. */

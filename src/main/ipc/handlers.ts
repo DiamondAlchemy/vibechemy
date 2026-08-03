@@ -31,6 +31,7 @@ import type { SettingsStore } from '../settings/SettingsStore'
 import type { UsageService } from '../usage/UsageService'
 import type { AsrProvider } from '../voice/AsrProvider'
 import { type ArtifactsService, ARTIFACTS_DIR_KEY } from '../artifacts/ArtifactsService'
+import type { ShareService } from '../artifacts/ShareService'
 import { planPinDeliveries } from '../pin/delivery'
 import { normalizePin, pinProjectId } from '@shared/pin'
 
@@ -56,6 +57,7 @@ export interface IpcDeps {
   usage: UsageService
   voice: AsrProvider
   artifacts: ArtifactsService
+  shares: ShareService
   control: ControlPlane
   notifyExit: (id: string) => void
   notifyProjects: () => void
@@ -77,6 +79,7 @@ export function registerIpc({
   usage,
   voice,
   artifacts,
+  shares,
   control,
   notifyExit,
   notifyProjects,
@@ -326,5 +329,14 @@ export function registerIpc({
     return result.canceled || result.filePaths.length === 0 ? null : result.filePaths[0]
   })
   ipcMain.handle(IPC.artifactsList, () => artifacts.list())
+  ipcMain.handle(IPC.artifactShare, async (_event, path: string) => {
+    const m = shares.mint(path)
+    if (!m.ok || !m.url) return m
+    // QR generation belongs here so the renderer needs no encoder. Until an encoder dependency
+    // is approved, the complete copyable URL still flows through the same response shape.
+    return { ...m, filename: path.split('/').pop() }
+  })
+  ipcMain.handle(IPC.artifactShareRevoke, (_event, token: string) => shares.revoke(token))
+  ipcMain.handle(IPC.artifactSharesActive, () => shares.active())
   ipcMain.handle(IPC.shellOpenPath, (_event, path: string) => shell.openPath(path))
 }

@@ -1,6 +1,6 @@
 import http from 'node:http'
 import { randomBytes, randomUUID } from 'node:crypto'
-import { chmodSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { chmodSync, createReadStream, existsSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js'
@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { clampAwaitTimeoutMs, isControlEventKind } from '../control/ControlEventHub'
 import type { ControlPlane } from '../control/ControlPlane'
 import { PRODUCT_IDENTITY } from '@shared/product'
+import { SHARE_ROUTE_PREFIX, contentDisposition, tokenFromPath } from '@shared/artifacts/share'
 
 export function loadOrCreateToken(file: string): string {
   if (existsSync(file)) {
@@ -357,12 +358,45 @@ export function startMcpServer(options: {
   host?: string
   keepaliveMs?: number
   listenRetryDelaysMs?: number[]
+  /** Resolve a share token to the artifact it names. The token IS the credential, so this route
+   * is pre-auth by design and can return only an already-contained artifact chosen at mint time. */
+  resolveShare?: (token: string) => { path: string; filename: string } | null
 }): Promise<McpHandle> {
   const host = options.host ?? '127.0.0.1'
   const transports: Record<string, StreamableHTTPServerTransport> = {}
   const servers: Record<string, McpServer> = {}
   const httpServer = http.createServer(async (request, response) => {
     try {
+      const requestPath = (request.url ?? '').split('?')[0]
+      if (request.method === 'GET' && requestPath.startsWith(SHARE_ROUTE_PREFIX)) {
+        // tokenFromPath accepts exactly 64 hex characters. A request-supplied path can never
+        // reach the filesystem; the token resolves only to the absolute path stored at mint time.
+        const token = tokenFromPath(requestPath)
+        const hit = token && options.resolveShare ? options.resolveShare(token) : null
+        if (!hit) {
+          response.writeHead(404, { 'content-type': 'text/plain' }).end('This link has expired or is not valid.')
+          return
+        }
+        let size = 0
+        try {
+          const stat = statSync(hit.path)
+          if (!stat.isFile()) throw new Error('not a file')
+          size = stat.size
+        } catch {
+          response.writeHead(404, { 'content-type': 'text/plain' }).end('That file is no longer available.')
+          return
+        }
+        response.writeHead(200, {
+          'content-type': 'application/octet-stream',
+          'content-length': String(size),
+          'content-disposition': contentDisposition(hit.filename),
+          // A shared link is a one-off hand-off; never let a proxy or browser keep a copy.
+          'cache-control': 'no-store, private',
+          'x-content-type-options': 'nosniff'
+        })
+        createReadStream(hit.path).pipe(response)
+        return
+      }
       const authorization = (request.headers['authorization'] as string | undefined) ?? ''
       const apiKey = (request.headers['x-api-key'] as string | undefined) ?? ''
       const presented = authorization.replace(/^Bearer\s+/i, '').trim() || apiKey.trim()
@@ -370,7 +404,7 @@ export function startMcpServer(options: {
         response.writeHead(401).end('unauthorized')
         return
       }
-      if ((request.url ?? '').split('?')[0] !== '/mcp') {
+      if (requestPath !== '/mcp') {
         response.writeHead(404).end('not found')
         return
       }

@@ -10,7 +10,8 @@ import { PROFILES_KEY, parseAgentProfiles } from '@shared/agents/profiles'
 import { PERSONAL_AGENT_PRESET_ID, parsePersonalAgent, personalAgentPreset } from '@shared/agents/personalAgent'
 import type { Preset } from '@shared/types'
 import { ActivityLog } from './activity/ActivityLog'
-import { ArtifactsService } from './artifacts/ArtifactsService'
+import { ArtifactsService, ARTIFACTS_DIR_KEY } from './artifacts/ArtifactsService'
+import { ShareService } from './artifacts/ShareService'
 import { createBootLogger } from './boot/bootLog'
 import { resolveIdentity } from './boot/identity'
 import { repairPath } from './boot/pathRepair'
@@ -193,6 +194,12 @@ app.whenReady().then(async () => {
   const settings = new SettingsStore(db)
   const artifacts = new ArtifactsService(settings)
   artifacts.startWatching(() => bus.emit('artifacts'))
+  // A share must use a public origin. This build has no remote-access service, so minting refuses
+  // clearly instead of returning a loopback URL that another device cannot reach.
+  const shares = new ShareService({
+    artifactsDir: () => settings.get(ARTIFACTS_DIR_KEY),
+    publicOrigin: () => null
+  })
   const voiceInstallScript = app.isPackaged
     ? join(process.resourcesPath, 'scripts', 'fetch-parakeet.sh')
     : join(app.getAppPath(), 'scripts', 'fetch-parakeet.sh')
@@ -340,6 +347,7 @@ app.whenReady().then(async () => {
     usage,
     voice,
     artifacts,
+    shares,
     control: controlPlane,
     notifyExit,
     notifyProjects: () => bus.emit('projects'),
@@ -354,7 +362,12 @@ app.whenReady().then(async () => {
 
   let mcp: McpHandle | undefined
   try {
-    mcp = await startMcpServer({ cp: controlPlane, token: mcpToken, port: mcpPort })
+    mcp = await startMcpServer({
+      cp: controlPlane,
+      token: mcpToken,
+      port: mcpPort,
+      resolveShare: (token) => shares.resolveToken(token)
+    })
     console.log(`[mcp] control plane on ${mcp.url} — token: ${mcpTokenPath}`)
     bootLog({ event: 'mcp', status: 'up', url: mcp.url })
   } catch (error) {
@@ -370,6 +383,7 @@ app.whenReady().then(async () => {
 
   app.on('before-quit', () => {
     void mcp?.stop()
+    shares.revokeAll()
     voice.dispose()
     pty.disposeAll()
     bus.dispose()

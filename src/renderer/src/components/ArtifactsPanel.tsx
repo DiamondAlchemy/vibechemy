@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { api } from '../api'
 import type { ArtifactFile, ArtifactList, ArtifactType } from '@shared/types'
+import type { ArtifactShare } from '@shared/ipc'
+import { expiresInLabel } from '@shared/artifacts/share'
 
 const TYPE_ORDER: ArtifactType[] = ['pdf', 'image', 'html', 'other']
 const TYPE_LABEL: Record<ArtifactType, string> = { pdf: 'PDF', image: 'Images', html: 'HTML', other: 'Other' }
@@ -23,6 +25,27 @@ function ago(ms: number): string {
 export function ArtifactsPanel({ onClose }: { onClose: () => void; projectId?: string | null }): React.JSX.Element {
   const [list, setList] = useState<ArtifactList | null>(null)
   const [selected, setSelected] = useState<ArtifactFile | null>(null)
+  // Share = hand this file to another device. The link is short-lived, so the countdown is
+  // part of the UI, not a detail: the operator must see that it dies. The result carries the
+  // path it belongs to, so selecting another file simply stops matching — no effect needed to
+  // clear it (the link itself stays live until it expires or is revoked).
+  const [share, setShare] = useState<(ArtifactShare & { forPath: string }) | null>(null)
+  const [sharing, setSharing] = useState(false)
+  const [now, setNow] = useState(() => Date.now())
+  const shown = share && selected && share.forPath === selected.path ? share : null
+  useEffect(() => {
+    if (!shown?.expiresAt) return
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [shown?.expiresAt])
+
+  const doShare = useCallback(async (path: string) => {
+    setSharing(true)
+    const r = await api.shareArtifact(path).catch(() => ({ ok: false, message: 'Share failed.' }) as ArtifactShare)
+    setSharing(false)
+    setNow(Date.now())
+    setShare({ ...r, forPath: path })
+  }, [])
 
   const refresh = useCallback(() => {
     api.listArtifacts().then((l) => {
@@ -102,23 +125,71 @@ export function ArtifactsPanel({ onClose }: { onClose: () => void; projectId?: s
           <div className="artifact-view">
             {!selected ? (
               <div className="artifact-empty">Select a file to preview.</div>
-            ) : selected.type === 'other' ? (
-              <div className="artifact-empty">
-                {selected.name}
-                <button
-                  className="artifact-btn"
-                  style={{ marginTop: 12 }}
-                  onClick={() => void api.openPath(selected.path)}
-                >
-                  Open in default app
-                </button>
-              </div>
             ) : (
-              React.createElement('webview', {
-                key: selected.path,
-                src: selected.url,
-                style: { position: 'absolute', inset: 0, border: 'none', background: '#fff' }
-              })
+              <>
+                <div className="artifact-actions">
+                  <span className="artifact-sel-name" title={selected.path}>
+                    {selected.name}
+                  </span>
+                  <button className="artifact-btn" onClick={() => void api.openPath(selected.path)}>
+                    Open
+                  </button>
+                  <button className="artifact-btn" disabled={sharing} onClick={() => void doShare(selected.path)}>
+                    {sharing ? 'Sharing…' : '↗ Share'}
+                  </button>
+                </div>
+                {shown && (
+                  <div className={'artifact-share' + (shown.ok ? '' : ' bad')}>
+                    {!shown.ok ? (
+                      <span className="artifact-share-msg">{shown.message}</span>
+                    ) : (
+                      <>
+                        {shown.qr && <img className="artifact-qr" src={shown.qr} alt="QR code for the share link" />}
+                        <div className="artifact-share-body">
+                          <div className="artifact-share-hint">
+                            {shown.qr
+                              ? 'Scan with your phone, or send this link to another computer.'
+                              : 'Send this link to another device.'}
+                          </div>
+                          <input
+                            className="artifact-share-url"
+                            readOnly
+                            value={shown.url}
+                            onFocus={(e) => e.target.select()}
+                          />
+                          <div className="artifact-share-row">
+                            <button
+                              className="artifact-btn"
+                              onClick={() => shown.url && api.clipboardWriteText(shown.url)}
+                            >
+                              Copy link
+                            </button>
+                            <button
+                              className="artifact-btn"
+                              onClick={() => {
+                                if (shown.token) void api.revokeArtifactShare(shown.token)
+                                setShare(null)
+                              }}
+                            >
+                              Revoke
+                            </button>
+                            <span className="artifact-share-ttl">
+                              expires in {expiresInLabel(shown.expiresAt ?? 0, now)}
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+                {selected.type !== 'other' &&
+                  React.createElement('webview', {
+                    key: selected.path,
+                    src: selected.url,
+                    style: { position: 'absolute', inset: 0, top: 'auto', border: 'none', background: '#fff' },
+                    className: 'artifact-preview'
+                  })}
+              </>
             )}
           </div>
         </div>

@@ -244,9 +244,8 @@ describe('UsageService', () => {
     const denied = ((_c: string, _a: string[], cb: (e: Error | null, out: string) => void) =>
       cb(Object.assign(new Error('interaction not allowed'), { code: 36 }), '')) as unknown as UsageDeps['execFile']
     const fetchSpy = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({}) })) as unknown as typeof fetch
-    const s = svc(
-      { execFile: denied, fetch: fetchSpy, readClaudeCredsFile: () => 'file-tok' },
-      (k) => (k === 'usage.claudeKeychain' ? 'on' : null)
+    const s = svc({ execFile: denied, fetch: fetchSpy, readClaudeCredsFile: () => 'file-tok' }, (k) =>
+      k === 'usage.claudeKeychain' ? 'on' : null
     )
     const claude = (await s.report()).agents.find((r) => r.id === 'claude-code')!
     expect(claude.error).toBeNull()

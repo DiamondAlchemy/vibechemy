@@ -1216,6 +1216,20 @@ input { outline: none; font-family: var(--sans); }
 .artifact-row.on { background: rgba(127,227,255,0.08); border-color: rgba(127,227,255,0.28); }
 .artifact-name { font-size: 12px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .artifact-meta { font-family: var(--mono); font-size: 10px; color: var(--text-faint); }
+/* Share an artifact to another device: optional QR, copyable link, and a visible expiry countdown. */
+.artifact-actions { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--hairline-2); }
+.artifact-sel-name { flex: 1; min-width: 0; font: 11px var(--mono); color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.artifact-share { display: flex; gap: 10px; padding: 10px; border-bottom: 1px solid var(--hairline-2); background: rgba(127, 227, 255, 0.04); }
+.artifact-share.bad { background: rgba(255, 122, 133, 0.07); }
+.artifact-share-msg { font: 11px/1.5 var(--mono); color: #ff9aa2; }
+.artifact-qr { width: 104px; height: 104px; border-radius: 8px; background: #fff; padding: 5px; flex: 0 0 auto; }
+.artifact-share-body { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
+.artifact-share-hint { font: 10.5px/1.4 var(--mono); color: var(--text-faint); }
+.artifact-share-url { width: 100%; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--hairline-2); border-radius: 6px; color: var(--accent); font: 10px var(--mono); padding: 5px 7px; }
+.artifact-share-row { display: flex; align-items: center; gap: 6px; }
+.artifact-share-ttl { font: 10px var(--mono); color: var(--text-faint); margin-left: auto; }
+/* The preview sits below the action/share chrome instead of covering the whole pane. */
+.artifact-view .artifact-preview { position: relative !important; flex: 1; min-height: 0; }
 .artifact-view { flex: 1 1 auto; min-width: 0; position: relative; overflow: hidden; background: var(--bg-2); display: flex; flex-direction: column; }
 .artifact-empty { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; font-family: var(--sans); font-size: 13px; color: var(--text-dim); }
 

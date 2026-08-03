@@ -2,6 +2,7 @@ import { clipboard, contextBridge, ipcRenderer, webUtils } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import { IPC } from '@shared/ipc'
 import type {
+  ArtifactShare,
   DiffResult,
   MergeResult,
   PrecheckResult,
@@ -104,6 +105,8 @@ const api = {
   setSetting: (key: string, value: string): Promise<void> => ipcRenderer.invoke(IPC.settingsSet, { key, value }),
   getUsageReport: (): Promise<UsageReport> => ipcRenderer.invoke(IPC.usageReport),
   listArtifacts: (): Promise<ArtifactList> => ipcRenderer.invoke(IPC.artifactsList),
+  shareArtifact: (path: string): Promise<ArtifactShare> => ipcRenderer.invoke(IPC.artifactShare, path),
+  revokeArtifactShare: (token: string): Promise<boolean> => ipcRenderer.invoke(IPC.artifactShareRevoke, token),
   openPath: (path: string): Promise<string> => ipcRenderer.invoke(IPC.shellOpenPath, path),
   onUpdateReady: (cb: (msg: UpdateReadyMsg) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, msg: UpdateReadyMsg): void => cb(msg)
