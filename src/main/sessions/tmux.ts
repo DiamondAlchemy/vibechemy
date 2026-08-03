@@ -4,8 +4,8 @@ import { promisify } from 'node:util'
 const pexec = promisify(execFile)
 
 /**
- * execFile buffers stdout in memory and REJECTS with ENOBUFS once it passes maxBuffer, whose
- * default is 1 MB. A pane capture is the one tmux call that routinely exceeds that: the pane
+ * execFile buffers stdout in memory and rejects once it passes maxBuffer (default 1 MB) with
+ * RangeError [ERR_CHILD_PROCESS_STDIO_MAXBUFFER]: "stdout maxBuffer length exceeded". A pane capture is the one tmux call that routinely exceeds that: the pane
  * History button asks for 5000 lines, and a wide pane full of coloured agent output carries far
  * more than 200 bytes a line. The rejection is swallowed by the History handler's `.catch(() => '')`,
  * so the operator sees "(no scrollback captured yet)" on exactly the busiest panes — the ones with

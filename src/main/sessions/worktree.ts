@@ -10,8 +10,8 @@ import { stripManagedBlock } from '../memory/projection'
 const pexec = promisify(execFile)
 
 /**
- * git's output is unbounded by nature and execFile rejects with ENOBUFS past maxBuffer (default
- * 1 MB). A worker that touches a lockfile, a generated bundle or a few hundred files produces a
+ * git's output is unbounded by nature and execFile rejects past maxBuffer (default 1 MB) with
+ * RangeError [ERR_CHILD_PROCESS_STDIO_MAXBUFFER]: "stdout maxBuffer length exceeded". A worker that touches a lockfile, a generated bundle or a few hundred files produces a
  * diff well past that, and `get_diff` / the Review panel then fail with an opaque spawn error
  * instead of showing the change. runInWorktree already sets an explicit 10 MB for the same reason;
  * these calls were simply missed.
@@ -269,12 +269,12 @@ export async function runInWorktree(
 
 /** Diff of what `branch` added since it diverged from the repo's current HEAD. */
 export async function diffBranch(repoDir: string, branch: string): Promise<{ diff: string; files: number }> {
-  const { stdout: diff } = await pexec('git', ['-C', repoDir, 'diff', `HEAD...${branch}`], {
-    maxBuffer: GIT_MAX_BUFFER
-  })
-  const { stdout: names } = await pexec('git', ['-C', repoDir, 'diff', '--name-only', `HEAD...${branch}`], {
-    maxBuffer: GIT_MAX_BUFFER
-  })
+  // Independent reads — the diff text and the changed-file names — so run them concurrently
+  // rather than paying both round trips on every diff view.
+  const [{ stdout: diff }, { stdout: names }] = await Promise.all([
+    pexec('git', ['-C', repoDir, 'diff', `HEAD...${branch}`], { maxBuffer: GIT_MAX_BUFFER }),
+    pexec('git', ['-C', repoDir, 'diff', '--name-only', `HEAD...${branch}`], { maxBuffer: GIT_MAX_BUFFER })
+  ])
   const files = names
     .split('\n')
     .map((s) => s.trim())

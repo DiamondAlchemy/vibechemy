@@ -136,20 +136,22 @@ describe('diffBranch + mergeBranch', () => {
     expect(files).toBe(1)
   })
 
-  it('returns a diff larger than execFile’s 1 MB default buffer', async () => {
-    // 3 MB of unique lines: compressible content would still exceed the default, but unique
-    // lines make the failure mode unambiguous. Without an explicit maxBuffer this rejects with
-    // ENOBUFS and Review shows a spawn error instead of the change.
-    const big = Array.from({ length: 60_000 }, (_, i) => `line ${i} ${'x'.repeat(40)}`).join('\n')
+  it('returns a diff larger than execFile’s 1 MB default buffer, untruncated', async () => {
+    // Sized to land BETWEEN the two limits — comfortably over execFile's 1 MB default (so it
+    // fails without an explicit maxBuffer) but under DIFF_DISPLAY_LIMIT (so the truncation path
+    // is not what's being exercised here; that has its own test below). ~1.6 MB.
+    const big = Array.from({ length: 30_000 }, (_, i) => `line ${i} ${'x'.repeat(40)}`).join('\n')
     await branchWithCommit('vc/big-1', 'big.txt', big)
     const { diff, files } = await diffBranch(repo, 'vc/big-1')
     expect(diff.length).toBeGreaterThan(1024 * 1024)
+    expect(diff.length).toBeLessThan(DIFF_DISPLAY_LIMIT)
+    expect(diff).not.toContain('diff truncated at')
     expect(files).toBe(1)
   })
 
   it('truncates a diff past the display limit rather than handing the UI an unbounded string', async () => {
     // ReviewPanel maps every line to a React element with no virtualisation, so "just raise
-    // maxBuffer" would trade an ENOBUFS error for a UI hang. The cap must be visible, not silent.
+    // maxBuffer" would trade a loud RangeError for a UI hang. The cap must be visible, not silent.
     const huge = Array.from({ length: 90_000 }, (_, i) => `line ${i} ${'y'.repeat(60)}`).join('\n')
     await branchWithCommit('vc/huge-1', 'huge.txt', huge)
     const { diff, files } = await diffBranch(repo, 'vc/huge-1')
