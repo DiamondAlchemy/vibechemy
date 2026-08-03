@@ -74,15 +74,26 @@ export class PresetRegistry {
     throw new Error(`Ambiguous preset "${id}" — matches ${matches.map((p) => p.id).join(', ')}. Use the exact id.`)
   }
 
-  /** Returns a single shell-string suitable as tmux's `sh -c` launch command. */
+  /**
+   * Returns a single shell-string suitable as tmux's `sh -c` launch command.
+   *
+   * Plain `env` values are inlined as before. `envFromFile` values are emitted as a command
+   * substitution reading the file at launch, so a SECRET never becomes part of the string: this
+   * command is tmux's argv, and the tmux server inherits the argv of whichever client starts it
+   * and keeps it for its whole life. An orchestrator's control-plane bearer inlined here was
+   * therefore readable via `ps` by every process on the machine — including the worker panes the
+   * README promises cannot reach the control plane.
+   */
   buildLaunchCommand(preset: Preset): string {
     const parts: string[] = []
     const env = preset.env ?? {}
-    const keys = Object.keys(env)
-    if (keys.length > 0) {
-      parts.push('env')
-      for (const k of keys) parts.push(`${k}=${shellQuote(env[k])}`)
-    }
+    const fromFile = preset.envFromFile ?? {}
+    if (Object.keys(env).length > 0 || Object.keys(fromFile).length > 0) parts.push('env')
+    for (const k of Object.keys(env)) parts.push(`${k}=${shellQuote(env[k])}`)
+    // `set -o pipefail`-style strictness is not available in plain sh; an unreadable token file
+    // yields an empty value, which the CLI reports as an auth failure — noisy, but never a silent
+    // launch with a stale credential.
+    for (const k of Object.keys(fromFile)) parts.push(`${k}="$(cat ${shellQuote(fromFile[k])})"`)
     parts.push(shellQuote(preset.command))
     for (const a of preset.args ?? []) parts.push(shellQuote(a))
     return parts.join(' ')

@@ -56,6 +56,16 @@ export interface Preset {
   command: string
   args: string[]
   env: Record<string, string>
+  /**
+   * Environment variables whose VALUE is read from a file at launch, as `KEY -> path`.
+   *
+   * For secrets only. A plain `env` entry is rendered into the launch command, which becomes
+   * tmux's argv and is world-readable through `ps` — so an orchestrator's control-plane bearer
+   * placed there is visible to every process on the machine, including the worker panes that are
+   * specifically not meant to hold it. Here only the PATH reaches argv; the value is read by the
+   * pane's own shell into its process environment, which is owner-readable rather than public.
+   */
+  envFromFile?: Record<string, string>
   defaultCwd?: string
   icon?: string
   color?: string

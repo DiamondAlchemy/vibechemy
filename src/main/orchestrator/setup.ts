@@ -110,7 +110,11 @@ export function fableOrchestratorPreset(mcpConfigPath: string): Preset {
  * token from the env var named in the config; we set it via the preset env. Codex
  * has no system-prompt flag, so the briefing rides in as the opening prompt.
  */
-export function codexOrchestratorPreset(token: string, url: string, o?: { model?: string; effort?: string }): Preset {
+export function codexOrchestratorPreset(
+  tokenPath: string,
+  url: string,
+  o?: { model?: string; effort?: string }
+): Preset {
   return {
     id: 'orchestrator-codex',
     name: 'Codex',
@@ -125,7 +129,10 @@ export function codexOrchestratorPreset(token: string, url: string, o?: { model?
       ...codexModelArgs(o?.model, o?.effort),
       CODEX_ORCHESTRATOR_PROMPT
     ],
-    env: { [PRODUCT_IDENTITY.mcpTokenEnvName]: token },
+    env: {},
+    // Read from the 0600 token file at launch instead of inlining the bearer: the launch string
+    // is tmux's argv, and `ps` exposes it to every process on the machine.
+    envFromFile: { [PRODUCT_IDENTITY.mcpTokenEnvName]: tokenPath },
     isSeed: true,
     isOrchestrator: true,
     color: '#10a37f'
@@ -204,13 +211,15 @@ export const OPENCODE_ORCHESTRATOR_MODELS: Array<{
  * The OpenCode orchestrators: one preset per model, all sharing the dedicated config
  * (product MCP + briefing) via OPENCODE_CONFIG, with the bearer token in the preset env.
  */
-export function opencodeOrchestratorPresets(token: string, configPath: string): Preset[] {
+export function opencodeOrchestratorPresets(tokenPath: string, configPath: string): Preset[] {
   return OPENCODE_ORCHESTRATOR_MODELS.map((m) => ({
     id: m.id,
     name: m.name,
     command: 'opencode',
     args: ['-m', m.model],
-    env: { OPENCODE_CONFIG: configPath, [PRODUCT_IDENTITY.mcpTokenEnvName]: token },
+    env: { OPENCODE_CONFIG: configPath },
+    // See codexOrchestratorPreset: the bearer is read from its file, never inlined into argv.
+    envFromFile: { [PRODUCT_IDENTITY.mcpTokenEnvName]: tokenPath },
     isSeed: true,
     isOrchestrator: true,
     free: m.free,

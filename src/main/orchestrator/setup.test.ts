@@ -62,7 +62,7 @@ describe('orchestrator setup', () => {
   })
 
   it('builds a Codex orchestrator preset: inline vibechemy config + env token + briefing prompt', () => {
-    const p = codexOrchestratorPreset('TOK123', 'http://127.0.0.1:4880/mcp')
+    const p = codexOrchestratorPreset('/abs/userData/mcp-token', 'http://127.0.0.1:4880/mcp')
     expect(p.id).toBe('orchestrator-codex')
     expect(p.command).toBe('codex')
     expect(p.isOrchestrator).toBe(true)
@@ -76,7 +76,10 @@ describe('orchestrator setup', () => {
       CODEX_ORCHESTRATOR_PROMPT
     ])
     // Codex reads the bearer token from this env var (named in the -c config).
-    expect(p.env.MCP_VIBECHEMY_API_KEY).toBe('TOK123')
+    // The bearer is read from its 0600 file at launch, never inlined — the launch string is
+    // tmux's argv and `ps` would publish it to every process, worker panes included.
+    expect(p.env.MCP_VIBECHEMY_API_KEY).toBeUndefined()
+    expect(p.envFromFile?.MCP_VIBECHEMY_API_KEY).toBe('/abs/userData/mcp-token')
     // The prompt carries the shared briefing so behavior matches the Claude orchestrator.
     expect(CODEX_ORCHESTRATOR_PROMPT).toContain(ORCHESTRATOR_BRIEFING)
   })
@@ -97,14 +100,17 @@ describe('orchestrator setup', () => {
   })
 
   it('builds OpenCode orchestrator presets (scoped via OPENCODE_CONFIG + env token), incl. free models', () => {
-    const presets = opencodeOrchestratorPresets('TOK123', '/abs/orchestrator/opencode.json')
+    const presets = opencodeOrchestratorPresets('/abs/userData/mcp-token', '/abs/orchestrator/opencode.json')
     expect(presets.length).toBeGreaterThanOrEqual(3)
     for (const p of presets) {
       expect(p.command).toBe('opencode')
       expect(p.args[0]).toBe('-m')
       expect(p.isOrchestrator).toBe(true)
       expect(p.env.OPENCODE_CONFIG).toBe('/abs/orchestrator/opencode.json')
-      expect(p.env.MCP_VIBECHEMY_API_KEY).toBe('TOK123')
+      // The bearer is read from its 0600 file at launch, never inlined — the launch string is
+    // tmux's argv and `ps` would publish it to every process, worker panes included.
+    expect(p.env.MCP_VIBECHEMY_API_KEY).toBeUndefined()
+    expect(p.envFromFile?.MCP_VIBECHEMY_API_KEY).toBe('/abs/userData/mcp-token')
     }
     // MiMo is the remaining $0 lead; MiniMax is now the paid regular M3; Nemotron is gone
     expect(presets.some((p) => p.free && p.args.includes('opencode/mimo-v2.5-free'))).toBe(true)
