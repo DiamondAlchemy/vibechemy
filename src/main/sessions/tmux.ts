@@ -74,7 +74,16 @@ export async function configureServer(): Promise<void> {
   const wheelCond = '#{mouse_any_flag}'
   await pexec(
     'tmux',
-    t('bind-key', '-n', 'WheelUpPane', 'if-shell', '-Ft=', wheelCond, 'send-keys -Mt=', 'if-shell -Ft= "#{alternate_on}" "" "copy-mode -et="')
+    t(
+      'bind-key',
+      '-n',
+      'WheelUpPane',
+      'if-shell',
+      '-Ft=',
+      wheelCond,
+      'send-keys -Mt=',
+      'if-shell -Ft= "#{alternate_on}" "" "copy-mode -et="'
+    )
   )
   await pexec('tmux', t('bind-key', '-n', 'WheelDownPane', 'if-shell', '-Ft=', wheelCond, 'send-keys -Mt=', ''))
   // Drag-select in copy-mode pipes straight to the macOS clipboard and KEEPS the selection lit;

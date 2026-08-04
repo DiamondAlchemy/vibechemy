@@ -325,13 +325,7 @@ describe('revive', () => {
     }
 
     const db1 = openDatabase(dbFile)
-    const mgr1 = new SessionManager(
-      db1,
-      PresetRegistry.from(leadPresets),
-      tmuxApi,
-      undefined,
-      () => NOW
-    )
+    const mgr1 = new SessionManager(db1, PresetRegistry.from(leadPresets), tmuxApi, undefined, () => NOW)
     insertExitedLead(db1, 'closed-1')
     expect(mgr1.listClosedOrchestrators().map((r) => r.id)).toEqual(['closed-1'])
     expect(mgr1.dismissClosedOrchestrator('closed-1').ok).toBe(true)

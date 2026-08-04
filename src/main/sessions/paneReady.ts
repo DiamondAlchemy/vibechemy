@@ -64,8 +64,7 @@ export async function waitForPaneStable(name: string, opts: PaneStableOpts): Pro
     if (snap !== null) {
       // Settled once the snapshot barely changes poll-to-poll — small char-diff tolerates a spinner /
       // blinking cursor / clock without waiting the full deadline; real rendering keeps it unsettled.
-      if (snap.trim().length > 0 && prev.length > 0 && paneCharDiff(snap, prev) <= STABLE_DIFF_TOLERANCE)
-        return
+      if (snap.trim().length > 0 && prev.length > 0 && paneCharDiff(snap, prev) <= STABLE_DIFF_TOLERANCE) return
       prev = snap
     } else if (errors >= 3) {
       return // pane is gone (killed/never existed) — don't hold injection for the full deadline
