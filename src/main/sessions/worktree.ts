@@ -9,6 +9,24 @@ import { stripManagedBlock } from '../memory/projection'
 
 const pexec = promisify(execFile)
 
+/**
+ * git's output is unbounded by nature and execFile rejects past maxBuffer (default 1 MB) with
+ * RangeError [ERR_CHILD_PROCESS_STDIO_MAXBUFFER]: "stdout maxBuffer length exceeded". A worker that touches a lockfile, a generated bundle or a few hundred files produces a
+ * diff well past that, and `get_diff` / the Review panel then fail with an opaque spawn error
+ * instead of showing the change. runInWorktree already sets an explicit 10 MB for the same reason;
+ * these calls were simply missed.
+ */
+const GIT_MAX_BUFFER = 16 * 1024 * 1024
+
+/**
+ * How much diff text is handed onward. Raising the execFile ceiling alone would swap one failure
+ * for a worse one: ReviewPanel renders the diff as `diff.split('\n').map(<DiffLine/>)` with no
+ * virtualisation, so a multi-hundred-megabyte diff becomes millions of React elements and wedges
+ * the UI — a silent hang instead of a loud error. Truncate with an in-band marker instead, which
+ * both the operator and the orchestrator's get_diff can see and act on.
+ */
+export const DIFF_DISPLAY_LIMIT = 2 * 1024 * 1024
+
 // The native context files the app projects its managed block into. A worktree whose ONLY
 // change is that block must NOT read as dirty: projected blocks must not block auto-discard or
 // get swept into history by merge's pre-capture.
@@ -135,7 +153,9 @@ export async function removeWorktree(repoDir: string, worktreePath: string, forc
 
 /** True if the worktree has any uncommitted changes (modified, staged, or untracked). */
 export async function isWorktreeDirty(worktreePath: string): Promise<boolean> {
-  const { stdout } = await pexec('git', ['-C', worktreePath, 'status', '--porcelain'])
+  const { stdout } = await pexec('git', ['-C', worktreePath, 'status', '--porcelain'], {
+    maxBuffer: GIT_MAX_BUFFER
+  })
   // NB: never .trim() the whole output — porcelain status codes are position-sensitive
   // (col 0-1 = X/Y, path at col 3), so trimming eats the first line's leading space.
   const lines = stdout.split('\n').filter((l) => l.trim().length > 0)
@@ -249,12 +269,27 @@ export async function runInWorktree(
 
 /** Diff of what `branch` added since it diverged from the repo's current HEAD. */
 export async function diffBranch(repoDir: string, branch: string): Promise<{ diff: string; files: number }> {
-  const { stdout: diff } = await pexec('git', ['-C', repoDir, 'diff', `HEAD...${branch}`])
-  const { stdout: names } = await pexec('git', ['-C', repoDir, 'diff', '--name-only', `HEAD...${branch}`])
+  // Independent reads — the diff text and the changed-file names — so run them concurrently
+  // rather than paying both round trips on every diff view.
+  const [{ stdout: diff }, { stdout: names }] = await Promise.all([
+    pexec('git', ['-C', repoDir, 'diff', `HEAD...${branch}`], { maxBuffer: GIT_MAX_BUFFER }),
+    pexec('git', ['-C', repoDir, 'diff', '--name-only', `HEAD...${branch}`], { maxBuffer: GIT_MAX_BUFFER })
+  ])
   const files = names
     .split('\n')
     .map((s) => s.trim())
     .filter(Boolean).length
+  if (diff.length > DIFF_DISPLAY_LIMIT) {
+    const shown = `${Math.round(DIFF_DISPLAY_LIMIT / 1024 / 1024)} MB`
+    const total = `${Math.round(diff.length / 1024 / 1024)} MB`
+    return {
+      diff:
+        diff.slice(0, DIFF_DISPLAY_LIMIT) +
+        `\n\n… diff truncated at ${shown} of ${total} (${files} files changed).\n` +
+        `Review the rest directly: git -C <repo> diff HEAD...${branch}\n`,
+      files
+    }
+  }
   return { diff, files }
 }
 
