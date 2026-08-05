@@ -24,8 +24,13 @@ function readKeychainToken(
   return new Promise((resolve) => {
     execFile('security', ['find-generic-password', '-s', service, '-w'], (err, stdout) => {
       if (err) {
+        // Only a NUMERIC exit status is a verdict from `security` itself (44 = errSecItemNotFound,
+        // i.e. simply not signed in). A spawn failure surfaces a STRING code like 'ENOENT' — which
+        // is what happens anywhere `security` does not exist at all — and must not be reported as
+        // a blocked Keychain, or the operator goes looking for a permission dialog that cannot
+        // appear on their platform.
         const code = (err as { code?: unknown }).code
-        return resolve({ token: null, denied: code !== 44 })
+        return resolve({ token: null, denied: typeof code === 'number' && code !== 44 })
       }
       try {
         const token =

@@ -38,6 +38,72 @@ function t(...args: string[]): string[] {
   return ['-L', SOCKET, ...args]
 }
 
+/** True if `name` resolves on PATH. `name` is always one of our own literals, never user input. */
+async function binaryExists(name: string): Promise<boolean> {
+  try {
+    await pexec('sh', ['-c', `command -v ${name}`])
+    return true
+  } catch {
+    return false
+  }
+}
+
+let clipboardCommand: string | null | undefined
+
+/**
+ * The command tmux's copy-pipe binding pipes a selection into.
+ *
+ * macOS has pbcopy and nothing else is needed. On Linux the right tool depends on the session
+ * (Wayland vs X11) and on what the user actually installed, so resolve once at boot instead of
+ * baking in a binary that may not exist — a missing one makes copy-pipe fail silently, which
+ * presents as "drag-select just doesn't copy" with nothing in any log.
+ *
+ * Returns null when nothing suitable is installed; the caller then skips the copy-pipe bindings
+ * entirely rather than installing a binding that cannot work.
+ */
+export async function resolveClipboardCommand(
+  opts: {
+    platform?: NodeJS.Platform
+    env?: NodeJS.ProcessEnv
+    exists?: (binary: string) => Promise<boolean>
+  } = {}
+): Promise<string | null> {
+  const platform = opts.platform ?? process.platform
+  const env = opts.env ?? process.env
+  const exists = opts.exists ?? binaryExists
+  // Injected options mean a test case, not the live app — don't read or poison the cache.
+  const live = !opts.platform && !opts.env && !opts.exists
+  if (live && clipboardCommand !== undefined) return clipboardCommand
+
+  const resolve = async (): Promise<string | null> => {
+    if (platform === 'darwin') return 'pbcopy'
+    // Gate each tool on the display server ACTUALLY being present, not merely on the binary being
+    // on PATH. xclip/xsel without DISPLAY, or wl-copy without WAYLAND_DISPLAY, install happily and
+    // then fail at COPY time — which is the exact silent failure this function exists to avoid.
+    // A headless session has no clipboard to reach, so it correctly resolves to null.
+    const candidates: string[] = []
+    // stdout is redirected because xclip and xsel hold the selection by staying resident; left
+    // attached to tmux's pipe, tmux can wait on them and the pane appears to hang after a drag.
+    if (env.WAYLAND_DISPLAY) candidates.push('wl-copy')
+    if (env.DISPLAY) {
+      candidates.push('xclip -selection clipboard -i >/dev/null 2>&1', 'xsel --clipboard --input >/dev/null 2>&1')
+    }
+    for (const candidate of candidates) {
+      if (await exists(candidate.split(' ')[0])) return candidate
+    }
+    return null
+  }
+
+  const resolved = await resolve()
+  if (live) clipboardCommand = resolved
+  return resolved
+}
+
+/** Test seam: forget the cached probe so a test can exercise a different platform/session. */
+export function resetClipboardCommand(): void {
+  clipboardCommand = undefined
+}
+
 export async function hasTmux(): Promise<boolean> {
   try {
     // Intentionally no -L: just checks the binary exists, not our server.
@@ -91,8 +157,17 @@ export async function configureServer(): Promise<void> {
   // scrolled back EXITS copy-mode to the live prompt so the next click or keystroke is not trapped.
   // Drag-select still works: the mousedown cancels, the drag re-enters copy-mode selection via the
   // root MouseDrag1Pane default, and release copy-pipes.
+  const clipboard = await resolveClipboardCommand()
   for (const table of ['copy-mode', 'copy-mode-vi']) {
-    await pexec('tmux', t('bind-key', '-T', table, 'MouseDragEnd1Pane', 'send-keys', '-X', 'copy-pipe', 'pbcopy'))
+    if (clipboard) {
+      await pexec('tmux', t('bind-key', '-T', table, 'MouseDragEnd1Pane', 'send-keys', '-X', 'copy-pipe', clipboard))
+    } else {
+      // Explicitly UNBIND rather than just skipping: leaving tmux's default MouseDragEnd1Pane in
+      // place runs copy-selection-and-cancel, which drops the highlight and exits copy mode while
+      // reaching no system clipboard. Unbound, a drag leaves the selection lit and the operator can
+      // still copy it through the pane's own Copy menu.
+      await pexec('tmux', t('unbind-key', '-T', table, 'MouseDragEnd1Pane')).catch(() => {})
+    }
     await pexec('tmux', t('bind-key', '-T', table, 'MouseDown1Pane', 'send-keys', '-X', 'cancel'))
   }
 }
