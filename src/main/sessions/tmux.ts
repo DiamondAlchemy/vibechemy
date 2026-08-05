@@ -51,26 +51,42 @@ let clipboardCommand: string | null | undefined
  * Returns null when nothing suitable is installed; the caller then skips the copy-pipe bindings
  * entirely rather than installing a binding that cannot work.
  */
-export async function resolveClipboardCommand(): Promise<string | null> {
-  if (clipboardCommand !== undefined) return clipboardCommand
-  if (process.platform === 'darwin') {
-    clipboardCommand = 'pbcopy'
-    return clipboardCommand
-  }
-  // Prefer the tool matching the session. wl-copy under X11 (or xclip under Wayland without
-  // XWayland) exits non-zero at COPY time, long after this probe, so session type has to decide.
-  const wayland = !!process.env.WAYLAND_DISPLAY
-  const candidates = wayland
-    ? ['wl-copy', 'xclip -selection clipboard', 'xsel --clipboard --input']
-    : ['xclip -selection clipboard', 'xsel --clipboard --input', 'wl-copy']
-  for (const candidate of candidates) {
-    if (await binaryExists(candidate.split(' ')[0])) {
-      clipboardCommand = candidate
-      return clipboardCommand
+export async function resolveClipboardCommand(
+  opts: {
+    platform?: NodeJS.Platform
+    env?: NodeJS.ProcessEnv
+    exists?: (binary: string) => Promise<boolean>
+  } = {}
+): Promise<string | null> {
+  const platform = opts.platform ?? process.platform
+  const env = opts.env ?? process.env
+  const exists = opts.exists ?? binaryExists
+  // Injected options mean a test case, not the live app — don't read or poison the cache.
+  const live = !opts.platform && !opts.env && !opts.exists
+  if (live && clipboardCommand !== undefined) return clipboardCommand
+
+  const resolve = async (): Promise<string | null> => {
+    if (platform === 'darwin') return 'pbcopy'
+    // Gate each tool on the display server ACTUALLY being present, not merely on the binary being
+    // on PATH. xclip/xsel without DISPLAY, or wl-copy without WAYLAND_DISPLAY, install happily and
+    // then fail at COPY time — which is the exact silent failure this function exists to avoid.
+    // A headless session has no clipboard to reach, so it correctly resolves to null.
+    const candidates: string[] = []
+    // stdout is redirected because xclip and xsel hold the selection by staying resident; left
+    // attached to tmux's pipe, tmux can wait on them and the pane appears to hang after a drag.
+    if (env.WAYLAND_DISPLAY) candidates.push('wl-copy')
+    if (env.DISPLAY) {
+      candidates.push('xclip -selection clipboard -i >/dev/null 2>&1', 'xsel --clipboard --input >/dev/null 2>&1')
     }
+    for (const candidate of candidates) {
+      if (await exists(candidate.split(' ')[0])) return candidate
+    }
+    return null
   }
-  clipboardCommand = null
-  return clipboardCommand
+
+  const resolved = await resolve()
+  if (live) clipboardCommand = resolved
+  return resolved
 }
 
 /** Test seam: forget the cached probe so a test can exercise a different platform/session. */
@@ -124,11 +140,14 @@ export async function configureServer(): Promise<void> {
   // root MouseDrag1Pane default, and release copy-pipes.
   const clipboard = await resolveClipboardCommand()
   for (const table of ['copy-mode', 'copy-mode-vi']) {
-    // Without a clipboard tool, bind copy-pipe to nothing: a binding pointing at a missing binary
-    // fails silently on every drag. The selection still highlights, and the renderer's own
-    // clipboard path (TerminalPane's onSelectionChange → Electron clipboard) still works.
     if (clipboard) {
       await pexec('tmux', t('bind-key', '-T', table, 'MouseDragEnd1Pane', 'send-keys', '-X', 'copy-pipe', clipboard))
+    } else {
+      // Explicitly UNBIND rather than just skipping: leaving tmux's default MouseDragEnd1Pane in
+      // place runs copy-selection-and-cancel, which drops the highlight and exits copy mode while
+      // reaching no system clipboard. Unbound, a drag leaves the selection lit and the operator can
+      // still copy it through the pane's own Copy menu.
+      await pexec('tmux', t('unbind-key', '-T', table, 'MouseDragEnd1Pane')).catch(() => {})
     }
     await pexec('tmux', t('bind-key', '-T', table, 'MouseDown1Pane', 'send-keys', '-X', 'cancel'))
   }

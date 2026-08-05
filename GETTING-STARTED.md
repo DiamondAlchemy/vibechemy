@@ -68,15 +68,26 @@ below does work. Substitute the macOS-specific prerequisites:
 | `brew install tmux` | `apt install tmux` / `dnf install tmux` |
 | `pbcopy` (built in) | `wl-copy` (Wayland) or `xclip` (X11) — see below |
 
-Git, Node, npm and Python 3 are the same. Verify with the same commands, minus `xcode-select -p`.
-
-One extra step: install a clipboard tool, or drag-selecting text in a pane will not reach the
-system clipboard. Vibechemy picks `wl-copy`, `xclip` or `xsel` automatically based on your session,
-and skips the binding entirely when none is present:
+Git, Node, npm and Python 3 are the same. Verify with the same commands, swapping `xcode-select -p`
+for a compiler check — native-module compilation fails late and confusingly without one:
 
 ```bash
+cc --version
+```
+
+One extra step: install a clipboard tool matching your session, or tmux's drag-to-copy will have
+nowhere to write. Vibechemy picks `wl-copy` under Wayland and `xclip`/`xsel` under X11, gated on the
+display server actually being present, and unbinds drag-to-copy entirely when none is available —
+the selection still highlights, and the pane's right-click Copy menu is unaffected.
+
+```bash
+# Debian / Ubuntu
 sudo apt install wl-clipboard   # Wayland
 sudo apt install xclip          # X11
+
+# Fedora
+sudo dnf install wl-clipboard   # Wayland
+sudo dnf install xclip          # X11
 ```
 
 Verified on Ubuntu 24.04 with tmux 3.4. Voice dictation resolves on Linux as well — `sherpa-onnx`
@@ -590,7 +601,7 @@ Quit and relaunch Vibechemy after the command succeeds.
 
 `npm run dev` exits immediately with:
 
-```
+```text
 The SUID sandbox helper binary was found, but is not configured correctly. Rather than run
 without sandboxing I'm aborting now.
 ```

@@ -22,6 +22,60 @@ afterEach(async () => {
   if (await hasSession(NAME)) await killSession(NAME)
 })
 
+describe('resolveClipboardCommand (unit — every platform, not just this runner)', () => {
+  const has =
+    (...present: string[]) =>
+    async (binary: string): Promise<boolean> =>
+      present.includes(binary)
+  const all = has('wl-copy', 'xclip', 'xsel')
+
+  it('uses pbcopy on macOS regardless of what else is installed', async () => {
+    expect(await resolveClipboardCommand({ platform: 'darwin', env: {}, exists: has() })).toBe('pbcopy')
+  })
+
+  it('prefers wl-copy under Wayland', async () => {
+    const cmd = await resolveClipboardCommand({ platform: 'linux', env: { WAYLAND_DISPLAY: 'wayland-0' }, exists: all })
+    expect(cmd).toBe('wl-copy')
+  })
+
+  it('uses xclip under X11', async () => {
+    const cmd = await resolveClipboardCommand({ platform: 'linux', env: { DISPLAY: ':0' }, exists: all })
+    expect(cmd).toContain('xclip')
+  })
+
+  it('falls back to xsel when xclip is absent under X11', async () => {
+    const cmd = await resolveClipboardCommand({ platform: 'linux', env: { DISPLAY: ':0' }, exists: has('xsel') })
+    expect(cmd).toContain('xsel')
+  })
+
+  it('never picks an X11 tool under Wayland-only, even when it is installed', async () => {
+    // The whole point: xclip without DISPLAY installs fine and fails at COPY time, which is the
+    // silent failure this resolver exists to prevent.
+    const cmd = await resolveClipboardCommand({
+      platform: 'linux',
+      env: { WAYLAND_DISPLAY: 'wayland-0' },
+      exists: has('xclip', 'xsel')
+    })
+    expect(cmd).toBeNull()
+  })
+
+  it('never picks wl-copy under X11-only, even when it is installed', async () => {
+    const cmd = await resolveClipboardCommand({ platform: 'linux', env: { DISPLAY: ':0' }, exists: has('wl-copy') })
+    expect(cmd).toBeNull()
+  })
+
+  it('resolves to null on a headless session with every tool installed', async () => {
+    expect(await resolveClipboardCommand({ platform: 'linux', env: {}, exists: all })).toBeNull()
+  })
+
+  it('redirects stdout for the resident X11 tools so tmux cannot wait on them', async () => {
+    for (const tool of ['xclip', 'xsel']) {
+      const cmd = await resolveClipboardCommand({ platform: 'linux', env: { DISPLAY: ':0' }, exists: has(tool) })
+      expect(cmd).toContain('>/dev/null')
+    }
+  })
+})
+
 describe('tmux helpers (integration)', () => {
   it('detects tmux is installed', async () => {
     expect(await hasTmux()).toBe(true)

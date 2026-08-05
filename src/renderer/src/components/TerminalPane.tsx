@@ -11,9 +11,8 @@ import { dictationAmplitude, dictationStore, type DictationPhase } from '../dict
 import { SettledResizeCoordinator } from '@shared/terminal/settledResize'
 import type { SessionRecord } from '@shared/types'
 import { panePresetMeta } from '../presetMeta'
+import { shortHome } from '@shared/ui/homePath'
 
-// /Users/<name> on macOS, /home/<name> on Linux — both collapse to ~ in the pane's cwd chip.
-const shortHome = (p: string): string => p.replace(/^\/(?:Users|home)\/[^/]+/, '~')
 
 // The terminal's colors are a LIVE theme from the PaneTheme catalog (paneTheme.ts) keyed by the
 // pane's stored token. allowTransparency is CONSTRUCTOR-ONLY in xterm, so every terminal is built

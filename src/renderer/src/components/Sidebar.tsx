@@ -4,8 +4,8 @@ import { OrchestratorDock } from './OrchestratorDock'
 import { useDragAffordanceClear } from '../hooks/useDragAffordanceClear'
 import type { Preset, Project, SessionRecord } from '@shared/types'
 import type { Tombstone } from '../tombstones'
+import { shortHome } from '@shared/ui/homePath'
 
-const shortHome = (p: string): string => p.replace(/^\/Users\/[^/]+/, '~')
 const MIN_W = 220
 const MAX_W = 680
 
