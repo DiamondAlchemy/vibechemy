@@ -155,3 +155,29 @@ describe('MergeService', () => {
     rmSync(repo, { recursive: true, force: true })
   })
 })
+
+describe('discard — revived-dead-worker data-loss guard', () => {
+  it('a session whose cwd IS the project root discards without deleting the root', async () => {
+    // The record shape a revive-after-prune produces: cwd = the project root, branch still set.
+    // Discarding it ran removeWorktree(root, root); git refused, and the old self-heal fallback
+    // rm -rf'd the project root. The root must survive and the discard must report clean.
+    const repo = makeRepo()
+    const db = openDatabase(join(mkdtempSync(join(tmpdir(), 'vc-ms-guard-')), 'g.sqlite'))
+    const mgr = new SessionManager(db, PresetRegistry.from(presets))
+    db.prepare(
+      'INSERT INTO sessions (id,project_id,preset_id,tmux_name,cwd,title,status,created_at,last_seen_at,branch,origin_root) VALUES (?,?,?,?,?,?,?,?,?,?,?)'
+    ).run('zombie', null, 'sleeper', 'vc_zombie', repo, 'Zombie', 'running', 1, 1, 'vc/stale-branch', repo)
+    const ms = new MergeService(
+      mgr,
+      new PtyBridge(
+        () => {},
+        () => {}
+      )
+    )
+    const res = await ms.discard('zombie')
+    expect(existsSync(join(repo, 'a.txt'))).toBe(true)
+    expect(res.ok).toBe(true)
+    rmSync(repo, { recursive: true, force: true })
+    db.close()
+  })
+})

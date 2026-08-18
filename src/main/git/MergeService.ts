@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs'
+import { resolve } from 'node:path'
 import type { SessionManager } from '../sessions/SessionManager'
 import type { PtyBridge } from '../sessions/PtyBridge'
 import type { ActivityLog } from '../activity/ActivityLog'
@@ -127,6 +128,17 @@ export class MergeService {
     this.pty.detach(sessionId)
     await this.sessions.kill(sessionId)
     if (!originRoot || !worktreePath || !existsSync(worktreePath)) return true // no worktree to remove
+    // DATA-LOSS GUARD: a dead isolated worker revived after its worktree was pruned re-homes to
+    // the PROJECT ROOT while keeping {branch, originRoot} — its record then claims isolation at
+    // the root, and the removal below would delete the whole project. A session whose cwd IS its
+    // origin root never had a removable worktree: no-op as "clean", loudly.
+    if (resolve(worktreePath) === resolve(originRoot)) {
+      console.warn(
+        `[MergeService] refusing worktree removal for ${sessionId}: cwd "${worktreePath}" IS the ` +
+          'project root (revived-after-prune record) — pane killed, nothing removed'
+      )
+      return true
+    }
     const wtRemoved = await removeWorktree(originRoot, worktreePath)
       .then(() => true)
       .catch((e) => {

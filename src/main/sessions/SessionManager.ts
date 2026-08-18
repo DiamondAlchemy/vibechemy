@@ -333,6 +333,14 @@ export class SessionManager {
     if (this.revivedIds.has(id)) return { ok: false, message: 'already revived this run' }
     const preset = this.presets.get(row.presetId)
     if (!preset) return { ok: false, message: `unknown preset: ${row.presetId}` }
+    // DATA-LOSS GUARD: an ISOLATED worker whose worktree no longer exists must NOT be revived at
+    // fallbackCwd — that re-homes it to the PROJECT ROOT while `row.branch` below still carries
+    // isolation, producing a record that claims a worktree AT the root; the eventual discard
+    // would then delete the project. The worktree is gone; the branch (with any committed work)
+    // survives in the origin repo — spawn a fresh worker instead.
+    if (row.branch && !existsSync(row.cwd)) {
+      return { ok: false, message: 'worktree gone — its branch survives in the repo; spawn a fresh worker' }
+    }
     const cwd = existsSync(row.cwd) ? row.cwd : fallbackCwd
     if (!cwd || !existsSync(cwd)) return { ok: false, message: 'working directory no longer exists' }
     const claude = isClaudeCli(preset.command)

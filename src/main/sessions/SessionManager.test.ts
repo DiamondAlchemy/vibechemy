@@ -343,3 +343,23 @@ describe('revive', () => {
     rmSync(dbFile, { force: true })
   })
 })
+
+describe('revive — isolation must not survive a dead worktree', () => {
+  it('refuses to revive an ISOLATED worker whose worktree no longer exists', async () => {
+    // The old behavior re-homed it to fallbackCwd (the project root) while keeping
+    // {branch, originRoot} — a record claiming isolation AT the project root, whose later
+    // discard would delete the project. Refusal is the fix: worktree gone, spawn fresh.
+    const dbFile = `${tmpdir()}/vc-test-revive-guard-${process.pid}.sqlite`
+    const db = openDatabase(dbFile)
+    const mgr = new SessionManager(db, PresetRegistry.from(presets))
+    const goneWt = mkdtempSync(`${tmpdir()}/vc-gone-wt-`)
+    rmSync(goneWt, { recursive: true, force: true }) // the worktree was pruned
+    db.prepare(
+      'INSERT INTO sessions (id,project_id,preset_id,tmux_name,cwd,title,status,created_at,last_seen_at,branch,origin_root) VALUES (?,?,?,?,?,?,?,?,?,?,?)'
+    ).run('deadiso', null, 'sleeper', 'vc_deadiso', goneWt, 'Dead', 'exited', 1, 1, 'vc/gone-branch', tmpdir())
+    const r = await mgr.revive('deadiso', tmpdir())
+    expect(r.ok).toBe(false)
+    expect(r.message).toMatch(/worktree/i)
+    db.close()
+  })
+})

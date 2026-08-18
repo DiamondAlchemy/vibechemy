@@ -78,7 +78,9 @@ describe('worktree helpers (integration, real git)', () => {
     rmSync(join(repo, '.git', 'worktrees', admin[0]), { recursive: true, force: true })
     expect(() => execFileSync('git', ['-C', repo, 'worktree', 'remove', '--force', wt])).toThrow()
     // The fallback (prune + direct rm) must still clear the directory, without throwing.
-    await removeWorktree(repo, wt)
+    // managedDir override: the raw-rm fallback only fires inside the managed worktrees dir —
+    // this fixture's wt lives directly in tmpdir(), so tmpdir() stands in for ~/.vibechemy/worktrees.
+    await removeWorktree(repo, wt, true, tmpdir())
     expect(existsSync(wt)).toBe(false)
   })
 })
@@ -245,5 +247,60 @@ describe('isWorktreeDirty — managed context block', () => {
     writeFileSync(join(repo, 'AGENTS.md'), mergeManagedBlock('', 'brief'))
     writeFileSync(join(repo, 'src.js'), 'real work')
     expect(await isWorktreeDirty(repo)).toBe(true)
+  })
+})
+
+describe('removeWorktree — project-root data-loss guards', () => {
+  // The failure this pins: a dead isolated worker revived after its worktree was pruned re-homes
+  // to the PROJECT ROOT while keeping its branch; discard then calls removeWorktree(root, root) —
+  // git refuses ("not a working tree"), and the old self-heal fallback rm -rf'd the project root.
+  let guardRepo: string
+  let plainDir: string
+  beforeEach(() => {
+    guardRepo = mkdtempSync(join(tmpdir(), 'vc-guard-repo-'))
+    execFileSync('git', ['-C', guardRepo, 'init', '-q'])
+    execFileSync('git', ['-C', guardRepo, 'config', 'user.email', 't@t'])
+    execFileSync('git', ['-C', guardRepo, 'config', 'user.name', 't'])
+    writeFileSync(join(guardRepo, 'precious.txt'), 'irreplaceable')
+    execFileSync('git', ['-C', guardRepo, 'add', '-A'])
+    execFileSync('git', ['-C', guardRepo, 'commit', '-q', '-m', 'init'])
+    plainDir = mkdtempSync(join(tmpdir(), 'vc-guard-plain-'))
+    writeFileSync(join(plainDir, 'precious.txt'), 'irreplaceable')
+  })
+  afterEach(() => {
+    for (const d of [guardRepo, plainDir]) {
+      try {
+        rmSync(d, { recursive: true, force: true })
+      } catch {
+        /* ignore */
+      }
+    }
+  })
+
+  it('REFUSES to remove the repo root itself — throws, root and contents survive', async () => {
+    await expect(removeWorktree(guardRepo, guardRepo)).rejects.toThrow(/refus/i)
+    expect(existsSync(join(guardRepo, 'precious.txt'))).toBe(true)
+  })
+
+  it('refuses even when the path is the repo root via a different spelling', async () => {
+    await expect(removeWorktree(guardRepo, `${guardRepo}${'/'}`)).rejects.toThrow(/refus/i)
+    expect(existsSync(join(guardRepo, 'precious.txt'))).toBe(true)
+  })
+
+  it('never raw-deletes a non-worktree dir OUTSIDE the managed worktrees dir', async () => {
+    await expect(removeWorktree(guardRepo, plainDir)).rejects.toThrow(/managed/i)
+    expect(existsSync(join(plainDir, 'precious.txt'))).toBe(true)
+  })
+
+  it('still self-heals an orphan INSIDE the managed dir', async () => {
+    const managed = mkdtempSync(join(tmpdir(), 'vc-guard-managed-'))
+    const orphan = join(managed, 'wt-1')
+    const base = await currentRef(guardRepo)
+    await addWorktree(guardRepo, orphan, 'vc/guard-orphan', base)
+    const admin = readdirSync(join(guardRepo, '.git', 'worktrees'))
+    rmSync(join(guardRepo, '.git', 'worktrees', admin[0]), { recursive: true, force: true })
+    await removeWorktree(guardRepo, orphan, true, managed)
+    expect(existsSync(orphan)).toBe(false)
+    rmSync(managed, { recursive: true, force: true })
   })
 })

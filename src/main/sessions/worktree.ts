@@ -2,8 +2,8 @@ import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { realpathSync, existsSync, readFileSync } from 'node:fs'
 import { symlink, access, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { tmpdir, homedir } from 'node:os'
+import { join, resolve, sep } from 'node:path'
 import { ensureExcluded } from '../git/localExclude'
 import { stripManagedBlock } from '../memory/projection'
 
@@ -138,8 +138,28 @@ export async function listWorktrees(repoDir: string): Promise<WorktreeInfo[]> {
  * to the branch) intend the folder gone, so falling back to a direct remove is safe and
  * makes the caller's leftover actually clear instead of lingering forever. `rm` never follows
  * symlinks, so a linked node_modules is unlinked, not nuked.
+ *
+ * DATA-LOSS GUARDS: a session record can end up claiming isolation AT the project root (a dead
+ * isolated worker revived after its worktree was pruned re-homes to the root while keeping its
+ * branch), and this function was then handed removeWorktree(root, root) — git refused ("not a
+ * working tree") and the self-heal fallback deleted the PROJECT ROOT. Two guards, both load-bearing:
+ *   1. The target may NEVER be the repo itself — refused before anything runs.
+ *   2. The raw-rm fallback fires ONLY for paths strictly inside the managed worktrees dir
+ *      (~/.vibechemy/worktrees). Anywhere else, a failed `git worktree remove` THROWS —
+ *      a leaked folder is recoverable, a deleted project is not.
  */
-export async function removeWorktree(repoDir: string, worktreePath: string, force = true): Promise<void> {
+export const MANAGED_WORKTREES_DIR = join(homedir(), '.vibechemy', 'worktrees')
+
+export async function removeWorktree(
+  repoDir: string,
+  worktreePath: string,
+  force = true,
+  managedDir: string = MANAGED_WORKTREES_DIR
+): Promise<void> {
+  const target = resolve(worktreePath)
+  if (target === resolve(repoDir)) {
+    throw new Error(`refusing to remove worktree: "${worktreePath}" IS the repository root`)
+  }
   const args = ['-C', repoDir, 'worktree', 'remove']
   if (force) args.push('--force')
   args.push(worktreePath)
@@ -147,7 +167,13 @@ export async function removeWorktree(repoDir: string, worktreePath: string, forc
     await pexec('git', args)
   } catch {
     await pexec('git', ['-C', repoDir, 'worktree', 'prune']).catch(() => {})
-    if (existsSync(worktreePath)) await rm(worktreePath, { recursive: true, force: true })
+    if (!(target + sep).startsWith(resolve(managedDir) + sep) || target === resolve(managedDir)) {
+      throw new Error(
+        `refusing raw delete of "${worktreePath}": git does not register it as a worktree and it ` +
+          `is outside the managed worktrees dir (${managedDir}) — will not rm an unmanaged path`
+      )
+    }
+    if (existsSync(target)) await rm(target, { recursive: true, force: true })
   }
 }
 
