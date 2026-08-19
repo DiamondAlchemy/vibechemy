@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Command a fleet of AI coding agents. Downloads and launches the latest Vibechemy release.",
   "bin": {
-    "vibechemy": "./cli.mjs"
+    "vibechemy": "cli.mjs"
   },
   "files": [
     "cli.mjs",
